@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Shield, Info, Scale, Rss, HeartPulse, Phone, MessageSquare } from 'lucide-react';
+import { Shield, Info, Scale, Rss, HeartPulse } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 
 export function Footer() {
   return (
@@ -12,8 +13,8 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 mb-12">
           {/* Mission Section */}
           <div className="space-y-6">
-            <div className="flex items-center gap-2">
-              <div className="h-6 w-6 rounded-full bg-accent" />
+            <div className="flex items-center gap-3">
+              <Logo iconClassName="h-8" />
               <h3 className="font-headline font-bold text-xl uppercase tracking-tighter">Listening to Echoes</h3>
             </div>
             <div className="space-y-4">
@@ -35,15 +36,8 @@ export function Footer() {
               <Rss className="h-4 w-4" /> RSS Feed & Podcast
             </h4>
             <div className="flex gap-4 items-start">
-              <div className="shrink-0 w-20 h-20 bg-black rounded-lg flex items-center justify-center border border-muted p-2" aria-label="Podcast Logo">
-                <svg viewBox="0 0 100 100" className="w-full h-full text-accent fill-current">
-                  {/* Silhouetted head */}
-                  <path d="M50 20c-15 0-25 10-25 25 0 8 3 15 8 20l-3 15h40l-3-15c5-5 8-12 8-20 0-15-10-25-25-25z" />
-                  {/* Outgoing sound waves (mouth) */}
-                  <path d="M65 55c5 0 10 5 10 10M65 50c8 0 15 7 15 15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  {/* Incoming sound waves (ear) */}
-                  <path d="M35 45c-5 0-10-5-10-10M35 50c-8 0-15-7-15-15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                </svg>
+              <div className="shrink-0 w-24 h-24 bg-black rounded-lg flex items-center justify-center border border-muted p-2" aria-label="Podcast Logo">
+                <Logo iconClassName="h-16" />
               </div>
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">

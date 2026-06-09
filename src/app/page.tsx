@@ -2,6 +2,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, BookOpen, HeartHandshake, Shield } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 
 export default function Home() {
   return (
@@ -16,7 +17,11 @@ export default function Home() {
           </div>
 
           <div className="container mx-auto px-4 relative z-10 text-center max-w-4xl">
-            <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight font-headline">
+            <div className="mb-12 flex justify-center">
+              <Logo iconClassName="h-32" showText className="animate-in fade-in zoom-in duration-1000" />
+            </div>
+            
+            <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight font-headline">
               Your Experience is the <span className="text-accent">Archive</span>
             </h1>
             <p className="text-xl text-muted-foreground mb-10 leading-relaxed max-w-2xl mx-auto">
