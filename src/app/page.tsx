@@ -74,22 +74,6 @@ export default function Home() {
           </div>
         </section>
       </main>
-
-      <footer className="border-t py-12 bg-background">
-        <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-2">
-             <div className="h-6 w-6 rounded-full bg-accent" />
-             <span className="font-headline font-bold">Listening to Echoes</span>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            © 2024 Qualitative Research Platform. Investigative Media Project.
-          </p>
-          <div className="flex gap-6 text-sm text-muted-foreground">
-            <Link href="/resources" className="hover:text-accent">Resources</Link>
-            <Link href="/librarian" className="hover:text-accent">Internal</Link>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
