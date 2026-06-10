@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from 'react';
@@ -7,20 +8,50 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ShieldCheck, Upload, CheckCircle2 } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { ShieldCheck, CheckCircle2, Info } from 'lucide-react';
+import { useFirestore } from '@/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function SubmitPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [tone, setTone] = useState([50]);
+  const db = useFirestore();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!db) return;
+
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
-      setSubmitted(true);
-    }, 1500);
+    const formData = new FormData(e.currentTarget);
+    const storyData = {
+      title: formData.get('title') as string,
+      content: formData.get('story') as string,
+      tone: tone[0],
+      status: 'pending',
+      tags: [],
+      submittedAt: new Date().toISOString(),
+      piiDetected: false,
+    };
+
+    const storiesRef = collection(db, 'stories');
+    addDoc(storiesRef, storyData)
+      .then(() => {
+        setSubmitted(true);
+        setLoading(false);
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: 'stories',
+          operation: 'create',
+          requestResourceData: storyData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        setLoading(false);
+      });
   };
 
   if (submitted) {
@@ -28,7 +59,7 @@ export default function SubmitPage() {
       <div className="min-h-screen flex flex-col">
         <Navbar />
         <main className="flex-1 flex items-center justify-center p-4">
-          <div className="max-w-md w-full text-center space-y-6 fade-in">
+          <div className="max-w-md w-full text-center space-y-6 animate-in fade-in zoom-in duration-500">
             <div className="mx-auto w-20 h-20 bg-accent/20 rounded-full flex items-center justify-center">
               <CheckCircle2 className="w-10 h-10 text-accent" />
             </div>
@@ -36,7 +67,7 @@ export default function SubmitPage() {
             <p className="text-muted-foreground">
               Thank you for sharing your journey. Our librarians will review your submission for privacy before it is added to the archive.
             </p>
-            <Button asChild className="w-full bg-accent text-background hover:bg-accent/90">
+            <Button asChild className="w-full bg-accent text-background hover:bg-accent/90 rounded-full">
               <a href="/archive">Back to Archive</a>
             </Button>
           </div>
@@ -46,14 +77,13 @@ export default function SubmitPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       <main className="flex-1 container mx-auto px-4 py-12 max-w-2xl">
         <div className="mb-8 space-y-2">
-          <h1 className="text-4xl font-bold font-headline">Share Your Echo</h1>
+          <h1 className="text-4xl font-bold font-headline text-accent">Share Your Echo</h1>
           <p className="text-muted-foreground">
-            Contribute your written or spoken experience. 
-            All entries are reviewed for privacy before publishing.
+            Contribute your written or spoken experience. All entries are reviewed for privacy before publishing.
           </p>
         </div>
 
@@ -64,39 +94,53 @@ export default function SubmitPage() {
               Privacy Assurance
             </CardTitle>
             <CardDescription>
-              We automatically flag names, dates, and locations. 
-              Librarians will redact these before your story goes live.
+              We automatically flag sensitive details. Librarians redact "breadcrumbs" before your story goes live.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-8">
               <div className="space-y-2">
                 <Label htmlFor="title">Title of your recollection</Label>
-                <Input id="title" placeholder="e.g., The Lunchroom Divide" required className="bg-muted/20" />
+                <Input id="title" name="title" placeholder="e.g., The Lunchroom Divide" required className="bg-muted/20 border-muted" />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="story">Your Story</Label>
                 <Textarea 
                   id="story" 
+                  name="story"
                   placeholder="Describe your educational experience in your own words..." 
-                  className="min-h-[200px] bg-muted/20 leading-relaxed" 
+                  className="min-h-[200px] bg-muted/20 leading-relaxed border-muted" 
                   required
                 />
               </div>
 
-              <div className="space-y-4">
-                <Label>Audio Version (Optional)</Label>
-                <div className="border-2 border-dashed border-muted rounded-xl p-8 text-center hover:border-accent/40 transition-colors cursor-pointer group">
-                  <Upload className="mx-auto h-8 w-8 text-muted-foreground group-hover:text-accent mb-2" />
-                  <p className="text-sm text-muted-foreground">Click to upload or drag and drop audio file</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">MP3, WAV or M4A (Max 10MB)</p>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-2">
+                    Resonant Tone
+                    <Info className="h-3 w-3 text-muted-foreground" />
+                  </Label>
+                  <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {tone[0]}% {tone[0] < 50 ? 'Warm/White' : 'Dark/Synthetic'}
+                  </span>
+                </div>
+                <Slider 
+                  value={tone} 
+                  onValueChange={setTone} 
+                  max={100} 
+                  step={1} 
+                  className="py-4"
+                />
+                <div className="flex justify-between text-[8px] uppercase tracking-[0.2em] text-muted-foreground">
+                  <span>High Tone</span>
+                  <span>Base Tone</span>
                 </div>
               </div>
 
               <Button 
                 type="submit" 
-                className="w-full h-12 bg-accent text-background hover:bg-accent/90 text-lg font-semibold"
+                className="w-full h-12 bg-accent text-background hover:bg-accent/90 text-lg font-semibold rounded-full"
                 disabled={loading}
               >
                 {loading ? "Securing Entry..." : "Submit to Archive"}

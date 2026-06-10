@@ -12,9 +12,10 @@
         "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
         "tags": { "type": "array", "items": { "type": "string" } },
         "audioUrl": { "type": "string" },
-        "piiDetected": { "type": "boolean" }
+        "piiDetected": { "type": "boolean" },
+        "tone": { "type": "number", "description": "0 (warm/white) to 100 (dark/black)" }
       },
-      "required": ["title", "content", "submittedAt", "status"]
+      "required": ["title", "content", "submittedAt", "status", "tone"]
     },
     "UserProfile": {
       "title": "User Profile",
