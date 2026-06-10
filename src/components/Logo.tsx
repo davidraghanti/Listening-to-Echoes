@@ -9,10 +9,9 @@ interface LogoProps {
   iconClassName?: string;
   showText?: boolean;
   variant?: 'light' | 'dark' | 'brand';
-  externalUrl?: string;
 }
 
-export function Logo({ className, iconClassName, showText = false, variant = 'brand', externalUrl = "https://your-external-site.com" }: LogoProps) {
+export function Logo({ className, iconClassName, showText = false, variant = 'brand' }: LogoProps) {
   const accentColor = "#4dabf7"; // The blue from the logo
   
   return (
@@ -63,14 +62,9 @@ export function Logo({ className, iconClassName, showText = false, variant = 'br
           </div>
           <div className="w-full flex items-center justify-between gap-2 mt-4">
             <div className="h-[1.5px] w-8 bg-white/60"></div>
-            <a 
-              href={externalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[10px] text-white/80 uppercase tracking-[0.35em] font-headline font-bold hover:text-accent transition-colors"
-            >
+            <span className="text-[10px] text-white/80 uppercase tracking-[0.35em] font-headline font-bold">
               David Raghanti
-            </a>
+            </span>
             <div className="h-[1.5px] w-8 bg-white/60"></div>
           </div>
         </div>
