@@ -1,10 +1,9 @@
-
 "use client"
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Library, PenTool, ShieldCheck, PlusSquare, BookHeart, Info, LogIn, LogOut } from 'lucide-react';
+import { Library, PenTool, ShieldCheck, PlusSquare, BookHeart, Info, LogIn, LogOut, Users } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { useUser, useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -64,16 +63,28 @@ export function Navbar() {
             })}
 
             {isLibrarian && (
-              <Link
-                href="/librarian"
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider transition-colors rounded-md hover:bg-muted/50 whitespace-nowrap",
-                  pathname === '/librarian' ? "text-accent bg-muted/50" : "text-muted-foreground"
-                )}
-              >
-                <ShieldCheck className="h-3.5 w-3.5" />
-                <span className="hidden xl:inline">Librarian</span>
-              </Link>
+              <>
+                <Link
+                  href="/librarian"
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider transition-colors rounded-md hover:bg-muted/50 whitespace-nowrap",
+                    pathname === '/librarian' ? "text-accent bg-muted/50" : "text-muted-foreground"
+                  )}
+                >
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  <span className="hidden xl:inline">Review</span>
+                </Link>
+                <Link
+                  href="/librarian/team"
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider transition-colors rounded-md hover:bg-muted/50 whitespace-nowrap",
+                    pathname === '/librarian/team' ? "text-accent bg-muted/50" : "text-muted-foreground"
+                  )}
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  <span className="hidden xl:inline">Team</span>
+                </Link>
+              </>
             )}
 
             {isAuthor && (
