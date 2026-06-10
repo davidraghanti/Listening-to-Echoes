@@ -1,15 +1,12 @@
-import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
-import { getFirestore, type Firestore } from 'firebase/firestore';
-import { firebaseConfig } from './config';
 
-export function initializeFirebase(): { app: FirebaseApp; auth: Auth; db: Firestore } {
-  const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-  return { app, auth, db };
-}
+/**
+ * Firebase Barrel File
+ * 
+ * This file serves as the central entry point for all Firebase-related 
+ * functionality, including initialization, providers, and custom hooks.
+ */
 
+export * from './init';
 export * from './provider';
 export * from './auth/use-user';
 export * from './firestore/use-collection';

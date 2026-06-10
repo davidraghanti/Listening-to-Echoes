@@ -5,7 +5,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { type FirebaseApp } from 'firebase/app';
 import { type Auth } from 'firebase/auth';
 import { type Firestore } from 'firebase/firestore';
-import { initializeFirebase } from './index';
+import { initializeFirebase } from './init';
 
 interface FirebaseContextType {
   app: FirebaseApp | null;
@@ -19,6 +19,10 @@ const FirebaseContext = createContext<FirebaseContextType>({
   db: null,
 });
 
+/**
+ * Root Firebase Provider
+ * Initializes Firebase services and provides them via context.
+ */
 export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   const [services, setServices] = useState<FirebaseContextType>({
     app: null,
@@ -38,6 +42,10 @@ export function FirebaseProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Hooks for accessing Firebase service instances
+ */
 export const useFirebase = () => useContext(FirebaseContext);
 export const useAuth = () => useContext(FirebaseContext).auth;
 export const useFirestore = () => useContext(FirebaseContext).db;
+export const useFirebaseApp = () => useContext(FirebaseContext).app;
