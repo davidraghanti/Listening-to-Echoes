@@ -1,0 +1,42 @@
+
+{
+  "entities": {
+    "Story": {
+      "title": "Story",
+      "description": "A submitted educational experience story.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "submittedAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "audioUrl": { "type": "string" },
+        "piiDetected": { "type": "boolean" }
+      },
+      "required": ["title", "content", "submittedAt", "status"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User account details and roles.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "librarian", "author"] }
+      }
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/stories/{storyId}": {
+      "schema": "Story",
+      "description": "Collection of all story submissions."
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles and permissions."
+    }
+  }
+}

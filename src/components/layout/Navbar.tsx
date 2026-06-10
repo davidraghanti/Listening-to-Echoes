@@ -1,21 +1,36 @@
+
 "use client"
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Library, PenTool, ShieldCheck, PlusSquare, BookHeart, Info } from 'lucide-react';
+import { Library, PenTool, ShieldCheck, PlusSquare, BookHeart, Info, LogIn, LogOut } from 'lucide-react';
 import { Logo } from '@/components/Logo';
+import { useUser, useAuth } from '@/firebase';
+import { Button } from '@/components/ui/button';
+import { signOut } from 'firebase/auth';
 
-const navItems = [
+const publicNavItems = [
   { name: 'Archive', href: '/archive', icon: Library },
   { name: 'Submit', href: '/submit', icon: PlusSquare },
-  { name: 'Librarian', href: '/librarian', icon: ShieldCheck },
-  { name: 'Authors', href: '/author', icon: PenTool },
   { name: 'Resources', href: '/resources', icon: BookHeart },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
+  const { user, profile, loading } = useUser();
+  const auth = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    if (auth) {
+      await signOut(auth);
+      router.push('/');
+    }
+  };
+
+  const isLibrarian = profile?.role === 'librarian';
+  const isAuthor = profile?.role === 'author';
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-md">
@@ -29,7 +44,7 @@ export function Navbar() {
           </Link>
 
           <div className="hidden md:flex items-center gap-0.5">
-            {navItems.map((item) => {
+            {publicNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
               return (
@@ -43,14 +58,54 @@ export function Navbar() {
                 >
                   <Icon className="h-3.5 w-3.5" />
                   <span className="hidden xl:inline">{item.name}</span>
-                  {/* On smaller screens, only show the label for the active item to save space */}
                   <span className={cn("xl:hidden", !isActive && "sr-only")}>{item.name}</span>
                 </Link>
               );
             })}
+
+            {isLibrarian && (
+              <Link
+                href="/librarian"
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider transition-colors rounded-md hover:bg-muted/50 whitespace-nowrap",
+                  pathname === '/librarian' ? "text-accent bg-muted/50" : "text-muted-foreground"
+                )}
+              >
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span className="hidden xl:inline">Librarian</span>
+              </Link>
+            )}
+
+            {isAuthor && (
+              <Link
+                href="/author"
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider transition-colors rounded-md hover:bg-muted/50 whitespace-nowrap",
+                  pathname === '/author' ? "text-accent bg-muted/50" : "text-muted-foreground"
+                )}
+              >
+                <PenTool className="h-3.5 w-3.5" />
+                <span className="hidden xl:inline">Author Lab</span>
+              </Link>
+            )}
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {!loading && (
+              user ? (
+                <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-accent">
+                  <LogOut className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Logout</span>
+                </Button>
+              ) : (
+                <Link href="/login">
+                  <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-accent">
+                    <LogIn className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Internal</span>
+                  </Button>
+                </Link>
+              )
+            )}
             <Link href="/about" className="text-muted-foreground hover:text-accent transition-colors p-2">
               <Info className="h-5 w-5" />
             </Link>

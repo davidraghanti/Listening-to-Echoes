@@ -1,16 +1,22 @@
+
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { INITIAL_STORIES } from '@/lib/mock-data';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, ShieldCheck, Tag, Check, X, Sparkles, UserRound, MapPin, Calendar } from 'lucide-react';
+import { AlertCircle, ShieldCheck, Tag, Check, X, Sparkles, UserRound, MapPin, Calendar, Lock } from 'lucide-react';
 import { detectPiiInStory, LibrarianPiiDetectionOutput } from '@/ai/flows/librarian-pii-detection';
 import { librarianAutomatedTaggingAndTrends, LibrarianAutomatedTaggingAndTrendsOutput } from '@/ai/flows/librarian-automated-tagging-and-trends-flow';
+import { useUser } from '@/firebase';
 
 export default function LibrarianDashboard() {
+  const { user, profile, loading: authLoading } = useUser();
+  const router = useRouter();
+  
   const [pendingStories, setPendingStories] = useState(INITIAL_STORIES.filter(s => s.status === 'pending'));
   const [selectedStory, setSelectedStory] = useState<string | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<{
@@ -18,6 +24,12 @@ export default function LibrarianDashboard() {
     tags: LibrarianAutomatedTaggingAndTrendsOutput | null;
     loading: boolean;
   }>({ pii: null, tags: null, loading: false });
+
+  useEffect(() => {
+    if (!authLoading && (!user || profile?.role !== 'librarian')) {
+      router.push('/login');
+    }
+  }, [user, profile, authLoading, router]);
 
   const activeStory = pendingStories.find(s => s.id === selectedStory);
 
@@ -41,13 +53,24 @@ export default function LibrarianDashboard() {
     setAiAnalysis({ pii: null, tags: null, loading: false });
   };
 
+  if (authLoading || !user || profile?.role !== 'librarian') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Lock className="h-12 w-12 text-muted-foreground mx-auto animate-pulse" />
+          <h2 className="text-xl font-headline font-bold">Verifying Credentials...</h2>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       <main className="flex-1 container mx-auto px-4 py-12">
         <div className="flex justify-between items-center mb-12">
           <div>
-            <h1 className="text-4xl font-bold font-headline">Librarian Review</h1>
+            <h1 className="text-4xl font-bold font-headline text-accent">Librarian Review</h1>
             <p className="text-muted-foreground">Ensuring anonymity and tagging the human experience.</p>
           </div>
           <Badge variant="outline" className="h-8 border-accent text-accent">

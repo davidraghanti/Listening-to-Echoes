@@ -1,12 +1,16 @@
+
 "use client"
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { ARCHIVE_POSTS } from '@/lib/mock-data';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { TrendingUp, PenTool, Mic, Plus, FileText, BarChart2 } from 'lucide-react';
+import { TrendingUp, PenTool, Mic, Plus, FileText, BarChart2, Lock } from 'lucide-react';
 import { format } from 'date-fns';
+import { useUser } from '@/firebase';
 
 const trendingTopics = [
   { name: 'Classroom Invisibility', count: 42 },
@@ -16,13 +20,33 @@ const trendingTopics = [
 ];
 
 export default function AuthorDashboard() {
+  const { user, profile, loading: authLoading } = useUser();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!authLoading && (!user || profile?.role !== 'author')) {
+      router.push('/login');
+    }
+  }, [user, profile, authLoading, router]);
+
+  if (authLoading || !user || profile?.role !== 'author') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Lock className="h-12 w-12 text-muted-foreground mx-auto animate-pulse" />
+          <h2 className="text-xl font-headline font-bold">Verifying Credentials...</h2>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       <main className="flex-1 container mx-auto px-4 py-12">
         <div className="flex justify-between items-end mb-12">
           <div>
-            <h1 className="text-4xl font-bold font-headline">Author Lab</h1>
+            <h1 className="text-4xl font-bold font-headline text-accent">Author Lab</h1>
             <p className="text-muted-foreground">Synthesizing the collective echoes into insightful media.</p>
           </div>
           <div className="flex gap-2">
