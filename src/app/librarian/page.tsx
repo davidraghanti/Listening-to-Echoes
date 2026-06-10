@@ -4,35 +4,46 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
-import { INITIAL_STORIES } from '@/lib/mock-data';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, ShieldCheck, Tag, Check, X, Sparkles, UserRound, MapPin, Calendar, Lock } from 'lucide-react';
+import { AlertCircle, ShieldCheck, Tag, Check, X, Sparkles, UserRound, MapPin, Calendar, Lock, Loader2, Info } from 'lucide-react';
 import { detectPiiInStory, LibrarianPiiDetectionOutput } from '@/ai/flows/librarian-pii-detection';
 import { librarianAutomatedTaggingAndTrends, LibrarianAutomatedTaggingAndTrendsOutput } from '@/ai/flows/librarian-automated-tagging-and-trends-flow';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
+import { Story } from '@/lib/types';
 
 export default function LibrarianDashboard() {
   const { user, profile, loading: authLoading } = useUser();
+  const db = useFirestore();
   const router = useRouter();
   
-  const [pendingStories, setPendingStories] = useState(INITIAL_STORIES.filter(s => s.status === 'pending'));
-  const [selectedStory, setSelectedStory] = useState<string | null>(null);
+  const pendingQuery = useMemoFirebase(() => {
+    if (!db) return null;
+    return query(
+      collection(db, 'stories'),
+      where('status', '==', 'pending'),
+      orderBy('submittedAt', 'desc')
+    );
+  }, [db]);
+
+  const { data: pendingStories, loading: storiesLoading } = useCollection<Story>(pendingQuery);
+  const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
   const [aiAnalysis, setAiAnalysis] = useState<{
     pii: LibrarianPiiDetectionOutput | null;
     tags: LibrarianAutomatedTaggingAndTrendsOutput | null;
     loading: boolean;
   }>({ pii: null, tags: null, loading: false });
 
+  const activeStory = pendingStories?.find(s => s.id === selectedStoryId);
+
   useEffect(() => {
     if (!authLoading && (!user || profile?.role !== 'librarian')) {
       router.push('/login');
     }
   }, [user, profile, authLoading, router]);
-
-  const activeStory = pendingStories.find(s => s.id === selectedStory);
 
   const runAiAnalysis = async (text: string) => {
     setAiAnalysis({ pii: null, tags: null, loading: true });
@@ -48,9 +59,29 @@ export default function LibrarianDashboard() {
     }
   };
 
-  const handleApprove = (id: string) => {
-    setPendingStories(prev => prev.filter(s => s.id !== id));
-    setSelectedStory(null);
+  const handleApprove = async (id: string) => {
+    if (!db) return;
+    const docRef = doc(db, 'stories', id);
+    // Combine suggested tags with AI tags for final approval
+    const finalTags = Array.from(new Set([
+      ...(activeStory?.tags || []),
+      ...(aiAnalysis.tags?.thematicTags || [])
+    ]));
+
+    await updateDoc(docRef, { 
+      status: 'approved',
+      tags: finalTags,
+      piiDetected: aiAnalysis.pii?.hasPii || false
+    });
+    setSelectedStoryId(null);
+    setAiAnalysis({ pii: null, tags: null, loading: false });
+  };
+
+  const handleReject = async (id: string) => {
+    if (!db) return;
+    const docRef = doc(db, 'stories', id);
+    await updateDoc(docRef, { status: 'rejected' });
+    setSelectedStoryId(null);
     setAiAnalysis({ pii: null, tags: null, loading: false });
   };
 
@@ -75,7 +106,7 @@ export default function LibrarianDashboard() {
             <p className="text-muted-foreground">Ensuring anonymity and tagging the human experience.</p>
           </div>
           <Badge variant="outline" className="h-8 border-accent text-accent">
-            {pendingStories.length} Pending Entries
+            {pendingStories?.length || 0} Pending Entries
           </Badge>
         </div>
 
@@ -85,22 +116,27 @@ export default function LibrarianDashboard() {
             <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
               <ShieldCheck className="h-4 w-4" /> Queue
             </h2>
-            {pendingStories.map(story => (
-              <Card 
-                key={story.id} 
-                className={`cursor-pointer transition-all ${selectedStory === story.id ? 'border-accent bg-accent/5' : 'border-muted hover:border-muted-foreground'}`}
-                onClick={() => {
-                  setSelectedStory(story.id);
-                  runAiAnalysis(story.content);
-                }}
-              >
-                <CardHeader className="p-4">
-                  <CardTitle className="text-md font-headline">{story.title}</CardTitle>
-                  <p className="text-xs text-muted-foreground">Submitted {format(new Date(story.submittedAt), 'MMM d, yyyy')}</p>
-                </CardHeader>
-              </Card>
-            ))}
-            {pendingStories.length === 0 && (
+            {storiesLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-accent" />
+              </div>
+            ) : pendingStories && pendingStories.length > 0 ? (
+              pendingStories.map(story => (
+                <Card 
+                  key={story.id} 
+                  className={`cursor-pointer transition-all ${selectedStoryId === story.id ? 'border-accent bg-accent/5' : 'border-muted hover:border-muted-foreground'}`}
+                  onClick={() => {
+                    setSelectedStoryId(story.id);
+                    runAiAnalysis(story.content);
+                  }}
+                >
+                  <CardHeader className="p-4">
+                    <CardTitle className="text-md font-headline line-clamp-1">{story.title}</CardTitle>
+                    <p className="text-xs text-muted-foreground">Submitted {story.submittedAt ? format(new Date(story.submittedAt), 'MMM d, yyyy') : 'unknown date'}</p>
+                  </CardHeader>
+                </Card>
+              ))
+            ) : (
               <p className="text-muted-foreground italic text-sm">No pending stories at this time.</p>
             )}
           </div>
@@ -119,7 +155,7 @@ export default function LibrarianDashboard() {
                         variant="ghost" 
                         size="sm" 
                         className="text-destructive hover:bg-destructive/10"
-                        onClick={() => handleApprove(activeStory.id)}
+                        onClick={() => handleReject(activeStory.id)}
                       >
                         <X className="h-4 w-4 mr-1" /> Reject
                       </Button>
@@ -132,10 +168,27 @@ export default function LibrarianDashboard() {
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent className="pt-6">
+                  <CardContent className="pt-6 space-y-4">
+                    <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground bg-muted/20 p-2 rounded">
+                       <span className="flex items-center gap-1"><Info className="h-3 w-3" /> User-assigned Tone: {activeStory.tone}%</span>
+                       <span>Submitted: {format(new Date(activeStory.submittedAt), 'PPp')}</span>
+                    </div>
                     <p className="whitespace-pre-wrap leading-relaxed text-foreground">
                       {activeStory.content}
                     </p>
+                    
+                    {activeStory.tags.length > 0 && (
+                      <div className="pt-4 border-t border-muted/30">
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">User Suggested Labels:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {activeStory.tags.map((tag, idx) => (
+                            <Badge key={idx} variant="outline" className="text-[9px] border-muted">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -176,7 +229,7 @@ export default function LibrarianDashboard() {
                     <CardHeader className="pb-3">
                       <CardTitle className="text-sm font-semibold flex items-center gap-2">
                         <Tag className="h-4 w-4 text-accent" />
-                        Thematic Tagging
+                        AI Thematic Tagging
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="text-sm">

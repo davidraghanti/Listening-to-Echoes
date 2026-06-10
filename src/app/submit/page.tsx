@@ -9,9 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
-import { ShieldCheck, CheckCircle2, Info } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, Info, Tag } from 'lucide-react';
 import { useFirestore } from '@/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -27,12 +27,19 @@ export default function SubmitPage() {
 
     setLoading(true);
     const formData = new FormData(e.currentTarget);
+    
+    // Process tags from comma-separated string
+    const tagsInput = formData.get('tags') as string;
+    const tags = tagsInput 
+      ? tagsInput.split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag !== "")
+      : [];
+
     const storyData = {
       title: formData.get('title') as string,
       content: formData.get('story') as string,
       tone: tone[0],
       status: 'pending',
-      tags: [],
+      tags: tags,
       submittedAt: new Date().toISOString(),
       piiDetected: false,
     };
@@ -115,6 +122,21 @@ export default function SubmitPage() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="tags" className="flex items-center gap-2">
+                  <Tag className="h-3 w-3" /> Archive Labels / Meta Tags
+                </Label>
+                <Input 
+                  id="tags" 
+                  name="tags" 
+                  placeholder="e.g., isolation, classroom, mentorship (comma separated)" 
+                  className="bg-muted/20 border-muted" 
+                />
+                <p className="text-[10px] text-muted-foreground italic">
+                  Suggest where this echo should be placed within the qualitative library.
+                </p>
+              </div>
+
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-2">
@@ -133,8 +155,8 @@ export default function SubmitPage() {
                   className="py-4"
                 />
                 <div className="flex justify-between text-[8px] uppercase tracking-[0.2em] text-muted-foreground">
-                  <span>High Tone</span>
-                  <span>Base Tone</span>
+                  <span>High Tone (Warm)</span>
+                  <span>Base Tone (Dark)</span>
                 </div>
               </div>
 
