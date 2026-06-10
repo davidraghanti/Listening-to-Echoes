@@ -1,9 +1,10 @@
+
 "use client"
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Library, PenTool, ShieldCheck, PlusSquare, BookHeart, Info, LogIn, LogOut, Users } from 'lucide-react';
+import { Library, PenTool, ShieldCheck, PlusSquare, BookHeart, Info, LogIn, LogOut, Users, ExternalLink } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { useUser, useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
@@ -61,6 +62,17 @@ export function Navbar() {
                 </Link>
               );
             })}
+
+            {/* Link to your external site */}
+            <a
+              href="https://your-external-site.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold uppercase tracking-wider transition-colors rounded-md hover:bg-muted/50 text-muted-foreground whitespace-nowrap"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              <span className="hidden xl:inline">Visit Site</span>
+            </a>
 
             {isLibrarian && (
               <>
