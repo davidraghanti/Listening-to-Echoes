@@ -129,7 +129,7 @@ export function Footer() {
 
         <div className="mt-16 pt-8 border-t border-muted flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
-            © 2024 Listening to Echoes | Qualitative Research Platform
+            © 2026 Listening to Echoes | Qualitative Research Platform
           </p>
           <div className="flex gap-6">
              <Link href="/about" className="text-[10px] text-muted-foreground hover:text-accent uppercase tracking-widest">About</Link>
