@@ -12,6 +12,7 @@ import { AlertCircle, ShieldCheck, Tag, Check, X, Sparkles, UserRound, MapPin, C
 import { detectPiiInStory, LibrarianPiiDetectionOutput } from '@/ai/flows/librarian-pii-detection';
 import { librarianAutomatedTaggingAndTrends, LibrarianAutomatedTaggingAndTrendsOutput } from '@/ai/flows/librarian-automated-tagging-and-trends-flow';
 import { useUser } from '@/firebase';
+import { format } from 'date-fns';
 
 export default function LibrarianDashboard() {
   const { user, profile, loading: authLoading } = useUser();
@@ -95,7 +96,7 @@ export default function LibrarianDashboard() {
               >
                 <CardHeader className="p-4">
                   <CardTitle className="text-md font-headline">{story.title}</CardTitle>
-                  <p className="text-xs text-muted-foreground">Submitted {new Date(story.submittedAt).toLocaleDateString()}</p>
+                  <p className="text-xs text-muted-foreground">Submitted {format(new Date(story.submittedAt), 'MMM d, yyyy')}</p>
                 </CardHeader>
               </Card>
             ))}
