@@ -1,9 +1,9 @@
 
 export const firebaseConfig = {
-  apiKey: "api-key",
-  authDomain: "project-id.firebaseapp.com",
-  projectId: "project-id",
-  storageBucket: "project-id.firebasestorage.app",
-  messagingSenderId: "sender-id",
-  appId: "app-id"
+  apiKey: "AIzaSyAs-Actual-Key-Will-Be-Here",
+  authDomain: "listening-to-echoes.firebaseapp.com",
+  projectId: "listening-to-echoes",
+  storageBucket: "listening-to-echoes.firebasestorage.app",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef123456"
 };

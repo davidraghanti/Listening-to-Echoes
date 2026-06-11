@@ -55,7 +55,6 @@ export default function SubmitPage() {
     const storiesRef = collection(db, 'stories');
     
     // Non-blocking mutation: Initiate the write and move on.
-    // Firestore handles background sync and local cache updates.
     addDoc(storiesRef, storyData)
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({

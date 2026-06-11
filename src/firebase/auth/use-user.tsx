@@ -35,38 +35,35 @@ export function useUser() {
 
     const userDocRef = doc(db, 'users', user.uid);
     
-    // First, listen to the UID-based document
     const unsubscribe = onSnapshot(userDocRef, async (snapshot) => {
       if (snapshot.exists()) {
         setProfile(snapshot.data() as UserProfile);
         setLoading(false);
       } else {
-        // Fallback: Check if there's an authorization by email
         if (user.email) {
           const email = user.email.toLowerCase();
+          
+          // Check for manual bootstrap or explicit email-based authorization
           const emailDocRef = doc(db, 'users', email);
           const emailSnapshot = await getDoc(emailDocRef);
           
           if (emailSnapshot.exists()) {
             const data = emailSnapshot.data() as UserProfile;
-            // "Migrate" or link the authorization to the UID for better security/performance
-            setDoc(userDocRef, {
+            await setDoc(userDocRef, {
               ...data,
               email: email,
               linkedAt: new Date().toISOString()
             }, { merge: true });
-            
             setProfile(data);
           } else if (email === 'davidraghanti@gmail.com') {
-            // Bootstrap the first librarian role
             const bootstrapProfile: UserProfile = { role: 'librarian', email: email };
-            setDoc(userDocRef, {
+            await setDoc(userDocRef, {
               ...bootstrapProfile,
               linkedAt: new Date().toISOString()
             }, { merge: true });
             setProfile(bootstrapProfile);
           } else {
-            setProfile({ role: 'user' });
+            setProfile({ role: 'user', email });
           }
         } else {
           setProfile({ role: 'user' });

@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Volume2, BookOpen, Loader2, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { Story } from '@/lib/types';
 import Link from 'next/link';
 
@@ -20,21 +20,25 @@ export default function ArchivePage() {
 
   const archiveQuery = useMemoFirebase(() => {
     if (!db) return null;
-    // Composite query requires an index.
+    // Simplified query to avoid immediate need for composite index
     return query(
       collection(db, 'stories'),
-      where('status', '==', 'approved'),
-      orderBy('submittedAt', 'desc')
+      where('status', '==', 'approved')
     );
   }, [db]);
 
   const { data: stories, loading, error } = useCollection<Story>(archiveQuery);
 
+  // Client-side sorting and filtering
   const filteredStories = stories?.filter(story => {
     const matchesSearch = story.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          story.content.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesTag = !selectedTag || story.tags.includes(selectedTag);
     return matchesSearch && matchesTag;
+  }).sort((a, b) => {
+    const dateA = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+    const dateB = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+    return dateB - dateA;
   }) || [];
 
   const allTags = Array.from(new Set(stories?.flatMap(s => s.tags) || []));
@@ -85,9 +89,9 @@ export default function ArchivePage() {
         {error ? (
           <div className="text-center py-20 border border-destructive/20 rounded-xl bg-destructive/5 space-y-4">
             <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
-            <h3 className="text-lg font-bold">Connection or Index Error</h3>
+            <h3 className="text-lg font-bold">Database Error</h3>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              We encountered an issue retrieving the archive. This often occurs if the database index is still building or if the Firestore rules are being updated.
+              We encountered an issue retrieving the archive. Please check your connection or contact an administrator.
             </p>
             <p className="text-[10px] font-mono text-muted-foreground p-4 bg-black/20 rounded break-all">
               {error.message}
@@ -143,7 +147,7 @@ export default function ArchivePage() {
                 </CardContent>
                 <CardFooter className="pt-0 flex flex-wrap gap-1">
                   {story.tags.map(tag => (
-                    <span key={tag} className="text-[10px] text-accent/70 uppercase">#{tag}</span>
+                    <span key={tag} className="text-[10px] text-accent/70 uppercase mr-2">#{tag}</span>
                   ))}
                 </CardFooter>
               </Card>
