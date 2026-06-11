@@ -7,7 +7,9 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, ShieldCheck, Tag, Check, X, Sparkles, UserRound, MapPin, Calendar, Lock, Loader2, Info } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { AlertCircle, ShieldCheck, Tag, Check, X, Sparkles, UserRound, MapPin, Calendar, Lock, Loader2, Info, Mic } from 'lucide-react';
 import { detectPiiInStory, LibrarianPiiDetectionOutput } from '@/ai/flows/librarian-pii-detection';
 import { librarianAutomatedTaggingAndTrends, LibrarianAutomatedTaggingAndTrendsOutput } from '@/ai/flows/librarian-automated-tagging-and-trends-flow';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -16,12 +18,22 @@ import { format } from 'date-fns';
 import { Story } from '@/lib/types';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useToast } from '@/hooks/use-toast';
 
 export default function LibrarianDashboard() {
   const { user, profile, loading: authLoading } = useUser();
   const db = useFirestore();
   const router = useRouter();
+  const { toast } = useToast();
   
+  const [audioUrl, setAudioUrl] = useState('');
+  const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<{
+    pii: LibrarianPiiDetectionOutput | null;
+    tags: LibrarianAutomatedTaggingAndTrendsOutput | null;
+    loading: boolean;
+  }>({ pii: null, tags: null, loading: false });
+
   const pendingQuery = useMemoFirebase(() => {
     if (!db) return null;
     return query(
@@ -32,13 +44,6 @@ export default function LibrarianDashboard() {
   }, [db]);
 
   const { data: pendingStories, loading: storiesLoading } = useCollection<Story>(pendingQuery);
-  const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
-  const [aiAnalysis, setAiAnalysis] = useState<{
-    pii: LibrarianPiiDetectionOutput | null;
-    tags: LibrarianAutomatedTaggingAndTrendsOutput | null;
-    loading: boolean;
-  }>({ pii: null, tags: null, loading: false });
-
   const activeStory = pendingStories?.find(s => s.id === selectedStoryId);
 
   useEffect(() => {
@@ -72,10 +77,17 @@ export default function LibrarianDashboard() {
     const updateData = { 
       status: 'approved',
       tags: finalTags,
-      piiDetected: aiAnalysis.pii?.hasPii || false
+      piiDetected: aiAnalysis.pii?.hasPii || false,
+      audioUrl: audioUrl.trim() || null
     };
 
     updateDoc(docRef, updateData)
+      .then(() => {
+        toast({
+          title: "Echo Approved",
+          description: "Story has been permanently archived."
+        });
+      })
       .catch(async (err) => {
         const pError = new FirestorePermissionError({
           path: docRef.path,
@@ -86,6 +98,7 @@ export default function LibrarianDashboard() {
       });
       
     setSelectedStoryId(null);
+    setAudioUrl('');
     setAiAnalysis({ pii: null, tags: null, loading: false });
   };
 
@@ -105,6 +118,7 @@ export default function LibrarianDashboard() {
       });
 
     setSelectedStoryId(null);
+    setAudioUrl('');
     setAiAnalysis({ pii: null, tags: null, loading: false });
   };
 
@@ -150,13 +164,14 @@ export default function LibrarianDashboard() {
                   className={`cursor-pointer transition-all ${selectedStoryId === story.id ? 'border-accent bg-accent/5' : 'border-muted hover:border-muted-foreground'}`}
                   onClick={() => {
                     setSelectedStoryId(story.id);
+                    setAudioUrl(story.audioUrl || '');
                     runAiAnalysis(story.content);
                   }}
                 >
                   <CardHeader className="p-4">
                     <CardTitle className="text-md font-headline line-clamp-1">{story.title}</CardTitle>
                     <p className="text-xs text-muted-foreground">
-                      Submitted {story.submittedAt ? format(new Date(story.submittedAt), 'MMM d, yyyy') : 'unknown date'}
+                      Submitted {story.submittedAt ? format(new Date(story.submittedAt), 'MMM d, yyyy') : 'Recently'}
                     </p>
                   </CardHeader>
                 </Card>
@@ -193,27 +208,32 @@ export default function LibrarianDashboard() {
                       </Button>
                     </div>
                   </CardHeader>
-                  <CardContent className="pt-6 space-y-4">
+                  <CardContent className="pt-6 space-y-6">
                     <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground bg-muted/20 p-2 rounded">
-                       <span className="flex items-center gap-1"><Info className="h-3 w-3" /> User-assigned Tone: {activeStory.tone}%</span>
+                       <span className="flex items-center gap-1"><Info className="h-3 w-3" /> Tone: {activeStory.tone}%</span>
                        <span>Submitted: {activeStory.submittedAt ? format(new Date(activeStory.submittedAt), 'PPp') : 'Recently'}</span>
                     </div>
-                    <p className="whitespace-pre-wrap leading-relaxed text-foreground">
-                      {activeStory.content}
-                    </p>
                     
-                    {activeStory.tags.length > 0 && (
-                      <div className="pt-4 border-t border-muted/30">
-                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">User Suggested Labels:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {activeStory.tags.map((tag, idx) => (
-                            <Badge key={idx} variant="outline" className="text-[9px] border-muted">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
+                    <div className="space-y-4">
+                      <p className="whitespace-pre-wrap leading-relaxed text-foreground">
+                        {activeStory.content}
+                      </p>
+                      
+                      <div className="pt-6 border-t border-muted/30 space-y-4">
+                        <Label className="flex items-center gap-2 text-xs uppercase tracking-widest text-accent">
+                          <Mic className="h-3 w-3" /> Link Archival Audio (Sound Bucket)
+                        </Label>
+                        <Input 
+                          placeholder="e.g., reflections/story-001.mp3"
+                          value={audioUrl}
+                          onChange={(e) => setAudioUrl(e.target.value)}
+                          className="bg-muted/30 border-muted text-xs h-10"
+                        />
+                        <p className="text-[10px] text-muted-foreground italic">
+                          Enter the filename from bucket 0e61b06faeaf to link this story to a podcast episode.
+                        </p>
                       </div>
-                    )}
+                    </div>
                   </CardContent>
                 </Card>
 
@@ -235,16 +255,13 @@ export default function LibrarianDashboard() {
                         <div className="space-y-2">
                           {aiAnalysis.pii.detectedPii.map((item, idx) => (
                             <div key={idx} className="flex items-center gap-2 px-2 py-1 rounded bg-destructive/10 text-destructive border border-destructive/20">
-                              {item.type === 'NAME' && <UserRound className="h-3 w-3" />}
-                              {item.type === 'LOCATION' && <MapPin className="h-3 w-3" />}
-                              {item.type === 'DATE' && <Calendar className="h-3 w-3" />}
-                              <span className="font-medium text-xs uppercase">{item.type}:</span>
-                              <span className="text-xs">{item.value}</span>
+                              <span className="font-medium text-[10px] uppercase">{item.type}:</span>
+                              <span className="text-[10px]">{item.value}</span>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-muted-foreground italic">No sensitive info detected.</p>
+                        <p className="text-muted-foreground italic text-xs">No sensitive info detected.</p>
                       )}
                     </CardContent>
                   </Card>
@@ -265,13 +282,13 @@ export default function LibrarianDashboard() {
                       ) : aiAnalysis.tags ? (
                         <div className="flex flex-wrap gap-2">
                           {aiAnalysis.tags.thematicTags.map((tag, idx) => (
-                            <Badge key={idx} variant="secondary" className="bg-primary/20 text-accent border-none text-[10px] uppercase">
+                            <Badge key={idx} variant="secondary" className="bg-primary/20 text-accent border-none text-[9px] uppercase">
                               {tag}
                             </Badge>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-muted-foreground italic">Pending analysis.</p>
+                        <p className="text-muted-foreground italic text-xs">Pending analysis.</p>
                       )}
                     </CardContent>
                   </Card>
@@ -282,7 +299,7 @@ export default function LibrarianDashboard() {
                 <ShieldCheck className="h-12 w-12 text-muted-foreground/30 mb-4" />
                 <h3 className="text-lg font-headline font-semibold mb-2">Select a Submission</h3>
                 <p className="text-muted-foreground max-w-xs">
-                  Choose an entry from the queue to perform PII screening and metadata tagging.
+                  Choose an entry to begin the qualitative review process.
                 </p>
               </div>
             )}

@@ -6,11 +6,12 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Volume2, BookOpen, Loader2, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Search, Volume2, BookOpen, Loader2, AlertTriangle, ShieldCheck, PlayCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { Story } from '@/lib/types';
+import { firebaseConfig } from '@/firebase/config';
 import Link from 'next/link';
 
 export default function ArchivePage() {
@@ -20,7 +21,6 @@ export default function ArchivePage() {
 
   const archiveQuery = useMemoFirebase(() => {
     if (!db) return null;
-    // Simplified query to avoid immediate need for composite index
     return query(
       collection(db, 'stories'),
       where('status', '==', 'approved')
@@ -29,7 +29,12 @@ export default function ArchivePage() {
 
   const { data: stories, loading, error } = useCollection<Story>(archiveQuery);
 
-  // Client-side sorting and filtering
+  const resolveAudioUrl = (url?: string) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    return `https://storage.googleapis.com/${firebaseConfig.audioBucketId}/${url}`;
+  };
+
   const filteredStories = stories?.filter(story => {
     const matchesSearch = story.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          story.content.toLowerCase().includes(searchQuery.toLowerCase());
@@ -50,7 +55,7 @@ export default function ArchivePage() {
         <div className="mb-12 space-y-6">
           <h1 className="text-4xl font-bold font-headline text-accent">The Archive</h1>
           <p className="text-muted-foreground max-w-2xl">
-            Browse approved recollections of triumphs and tribulations in education. This space is designed for reflection, not reaction.
+            Browse approved recollections. Stories with <Volume2 className="inline h-4 w-4" /> include archival audio recordings.
           </p>
           
           <div className="flex flex-col md:flex-row gap-4">
@@ -91,10 +96,7 @@ export default function ArchivePage() {
             <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
             <h3 className="text-lg font-bold">Database Error</h3>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              We encountered an issue retrieving the archive. Please check your connection or contact an administrator.
-            </p>
-            <p className="text-[10px] font-mono text-muted-foreground p-4 bg-black/20 rounded break-all">
-              {error.message}
+              Check your connection or ensure Firestore indices are generated.
             </p>
           </div>
         ) : loading ? (
@@ -104,22 +106,12 @@ export default function ArchivePage() {
           </div>
         ) : filteredStories.length === 0 ? (
           <div className="text-center py-20 border border-dashed rounded-xl border-muted space-y-6">
-            <div className="space-y-2">
-              <p className="text-muted-foreground">The public archive is currently empty or pending librarian approval.</p>
-              <p className="text-xs text-muted-foreground/60 italic">Connections here are reflective, internal, and profound.</p>
-            </div>
-            
-            <div className="flex flex-col items-center gap-4">
-              <Link href="/submit">
-                <Badge variant="outline" className="border-accent text-accent px-6 py-2 cursor-pointer hover:bg-accent hover:text-background transition-colors">
-                  Be the first echo
-                </Badge>
-              </Link>
-              
-              <Link href="/librarian" className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-accent flex items-center gap-1">
-                <ShieldCheck className="h-3 w-3" /> Internal Review Dashboard
-              </Link>
-            </div>
+            <p className="text-muted-foreground">The public archive is currently empty.</p>
+            <Link href="/submit">
+              <Badge variant="outline" className="border-accent text-accent px-6 py-2 cursor-pointer hover:bg-accent hover:text-background transition-colors">
+                Be the first echo
+              </Badge>
+            </Link>
           </div>
         ) : (
           <div className="archive-grid">
@@ -140,10 +132,17 @@ export default function ArchivePage() {
                     {story.title}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex-1">
+                <CardContent className="flex-1 space-y-4">
                   <p className="text-muted-foreground text-sm line-clamp-4 leading-relaxed">
                     {story.content}
                   </p>
+                  {story.audioUrl && (
+                    <div className="pt-4 border-t border-muted/20">
+                      <audio controls className="w-full h-8 grayscale opacity-60 hover:opacity-100 transition-opacity">
+                        <source src={resolveAudioUrl(story.audioUrl)!} type="audio/mpeg" />
+                      </audio>
+                    </div>
+                  )}
                 </CardContent>
                 <CardFooter className="pt-0 flex flex-wrap gap-1">
                   {story.tags.map(tag => (
