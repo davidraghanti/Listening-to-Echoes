@@ -17,6 +17,7 @@ export default function EchoChamberPage() {
   const [displayText, setDisplayText] = useState('');
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [toneValue, setToneValue] = useState([50]);
+  const [hasEngaged, setHasEngaged] = useState(false);
   const textIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -31,17 +32,18 @@ export default function EchoChamberPage() {
 
   const { data: stories } = useCollection<Story>(chamberQuery);
 
-  // Sync playback rate with slider position
+  // Sync playback rate and background color with slider position
   useEffect(() => {
     if (audioRef.current) {
-      // Scale frequency rate alongside the grayscale shift
-      // 0 -> 0.5x speed, 100 -> 1.5x speed
+      // Scale frequency rate: 0 -> 0.5x, 100 -> 1.5x
       audioRef.current.playbackRate = 0.5 + (toneValue[0] / 100);
-      
-      // Optionally adjust volume to be "warmer" (louder) or "colder" (quieter)
-      audioRef.current.volume = 0.2 + (toneValue[0] / 200); 
+      audioRef.current.volume = isAudioMuted ? 0 : 0.2 + (toneValue[0] / 200); 
     }
-  }, [toneValue]);
+
+    // Dynamic background calculation: rgb(10,10,10) to rgb(60,60,60)
+    const grayValue = 10 + (toneValue[0] * 0.5);
+    document.documentElement.style.setProperty('--chamber-bg', `rgb(${grayValue}, ${grayValue}, ${grayValue})`);
+  }, [toneValue, isAudioMuted]);
 
   useEffect(() => {
     if (stories && stories.length > 0) {
@@ -61,12 +63,20 @@ export default function EchoChamberPage() {
           clearInterval(textIntervalRef.current!);
           setTimeout(() => {
             setActiveStoryIdx((prev) => (prev + 1) % stories.length);
-          }, 5000); // Pause on finished text before rotating
+          }, 5000); 
         }
       }, 40);
     }
     return () => { if (textIntervalRef.current) clearInterval(textIntervalRef.current); };
   }, [stories, activeStoryIdx]);
+
+  const handleSliderEngagement = (val: number[]) => {
+    setToneValue(val);
+    if (!hasEngaged && audioRef.current) {
+      audioRef.current.play().catch(e => console.error("Audio engagement failed", e));
+      setHasEngaged(true);
+    }
+  };
 
   const toggleMute = () => {
     if (audioRef.current) {
@@ -76,21 +86,21 @@ export default function EchoChamberPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-black overflow-hidden selection:bg-white/5">
+    <div 
+      className="min-h-screen flex flex-col overflow-hidden selection:bg-white/5 transition-colors duration-500 ease-out"
+      style={{ backgroundColor: 'var(--chamber-bg, rgb(10,10,10))' }}
+    >
       <Navbar />
       
-      {/* Ambient Audio Engine */}
       <audio 
         ref={audioRef}
         id="ambient-loop" 
-        autoPlay 
         loop 
         src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
       />
 
       <main className="flex-1 flex flex-col items-center justify-center p-4 relative">
-        {/* Extreme Dark Atmosphere modulated by Slider */}
-        <div className="absolute inset-0 z-0 bg-black">
+        <div className="absolute inset-0 z-0">
            <div 
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] blur-[160px] animate-pulse pointer-events-none transition-colors duration-1000" 
             style={{ 
@@ -102,37 +112,37 @@ export default function EchoChamberPage() {
         <div className="z-10 w-full max-w-4xl space-y-16">
           {stories && stories.length > 0 ? (
             <div className="space-y-16 text-center">
-              {/* The Text-Based Tapestry */}
               <div className="min-h-[320px] flex items-center justify-center px-4">
                 <p 
                   className="text-xl md:text-3xl font-headline leading-relaxed max-w-3xl mx-auto italic transition-all duration-1000 tracking-widest font-light"
-                  style={{ color: `rgba(255, 255, 255, ${0.02 + (toneValue[0] / 2000)})` }}
+                  style={{ color: `rgba(255, 255, 255, ${0.05 + (toneValue[0] / 1500)})` }}
                 >
                   {displayText}
                   <span className="animate-pulse inline-block w-1 h-6 ml-1 bg-white/10" />
                 </p>
               </div>
 
-              {/* Interactive Monochrome Slider */}
               <div className="max-w-xs mx-auto space-y-4 px-8">
                 <div className="flex justify-between text-[8px] uppercase tracking-[0.5em] text-white/20 font-mono">
                   <span>Warm</span>
                   <span className="flex items-center gap-2"><Activity className="h-3 w-3" /> Resonant Tone</span>
                   <span>Synthetic</span>
                 </div>
+                
                 <Slider 
+                  id="matrix-slider"
                   value={toneValue} 
-                  onValueChange={setToneValue} 
+                  onValueChange={handleSliderEngagement} 
                   max={100} 
                   step={1} 
                   className="opacity-40 hover:opacity-100 transition-opacity"
                 />
-                <p className="text-[7px] text-white/10 font-mono uppercase tracking-[0.2em]">
-                  Modulating Archive Frequency: {(0.5 + toneValue[0]/100).toFixed(2)}x
-                </p>
+
+                <div id="slider-feedback" className="text-[7px] text-white/10 font-mono uppercase tracking-[0.2em]">
+                  Active Matrix Position: {toneValue[0]}% | Frequency: {(0.5 + toneValue[0]/100).toFixed(2)}x
+                </div>
               </div>
 
-              {/* Shifting Sound Bar Display */}
               <div 
                 className="grayscale contrast-150 transition-all duration-500"
                 style={{ opacity: 0.05 + (toneValue[0] / 1000), transform: `scale(${1 + toneValue[0]/200})` }}
@@ -141,12 +151,6 @@ export default function EchoChamberPage() {
               </div>
 
               <div className="flex flex-col items-center gap-10">
-                <div className="space-y-2">
-                  <p className="text-[9px] uppercase tracking-[0.8em] text-white/5 font-mono">
-                    Echo Streamed: Layer {activeStoryIdx + 1}
-                  </p>
-                </div>
-                
                 <div className="flex flex-col sm:flex-row gap-6">
                   <Button asChild variant="outline" className="border-white/5 text-white/10 hover:bg-white/5 hover:text-white/30 rounded-full px-12 transition-all border-dashed bg-transparent">
                     <Link href="/echo-chamber/record">
@@ -178,7 +182,6 @@ export default function EchoChamberPage() {
           )}
         </div>
 
-        {/* Audio Controls */}
         <div className="absolute bottom-8 right-8 z-20">
           <Button 
             variant="ghost" 
