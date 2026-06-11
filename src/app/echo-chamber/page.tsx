@@ -4,11 +4,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
 import { Story } from '@/lib/types';
 import { EchoVisualizer } from '@/components/EchoVisualizer';
-import { ArrowRight, Mic, Volume2, VolumeX } from 'lucide-react';
+import { ArrowRight, Mic, Volume2, VolumeX, Activity } from 'lucide-react';
 import Link from 'next/link';
 
 export default function EchoChamberPage() {
@@ -16,6 +17,7 @@ export default function EchoChamberPage() {
   const [activeStoryIdx, setActiveStoryIdx] = useState(0);
   const [displayText, setDisplayText] = useState('');
   const [isAudioMuted, setIsAudioMuted] = useState(false);
+  const [toneValue, setToneValue] = useState([50]);
   const textIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -29,6 +31,18 @@ export default function EchoChamberPage() {
   }, [db]);
 
   const { data: stories } = useCollection<Story>(chamberQuery);
+
+  // Sync playback rate with slider position
+  useEffect(() => {
+    if (audioRef.current) {
+      // Scale frequency rate alongside the grayscale shift
+      // 0 -> 0.5x speed, 100 -> 1.5x speed
+      audioRef.current.playbackRate = 0.5 + (toneValue[0] / 100);
+      
+      // Optionally adjust volume to be "warmer" (louder) or "colder" (quieter)
+      audioRef.current.volume = 0.2 + (toneValue[0] / 200); 
+    }
+  }, [toneValue]);
 
   useEffect(() => {
     if (stories && stories.length > 0) {
@@ -66,7 +80,7 @@ export default function EchoChamberPage() {
     <div className="min-h-screen flex flex-col bg-black overflow-hidden selection:bg-white/5">
       <Navbar />
       
-      {/* Fallback Ambient Audio Loop */}
+      {/* Ambient Audio Engine */}
       <audio 
         ref={audioRef}
         id="ambient-loop" 
@@ -76,34 +90,61 @@ export default function EchoChamberPage() {
       />
 
       <main className="flex-1 flex flex-col items-center justify-center p-4 relative">
-        {/* Extreme Dark Atmosphere */}
+        {/* Extreme Dark Atmosphere modulated by Slider */}
         <div className="absolute inset-0 z-0 bg-black">
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-radial-gradient from-accent/5 to-transparent blur-[160px] animate-pulse pointer-events-none" />
+           <div 
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] blur-[160px] animate-pulse pointer-events-none transition-colors duration-1000" 
+            style={{ 
+              background: `radial-gradient(circle, hsl(var(--accent) / ${0.02 + (toneValue[0] / 1000)}) 0%, transparent 70%)` 
+            }}
+           />
         </div>
 
         <div className="z-10 w-full max-w-4xl space-y-16">
           {stories && stories.length > 0 ? (
-            <div className="space-y-20 text-center">
+            <div className="space-y-16 text-center">
               {/* The Text-Based Tapestry */}
               <div className="min-h-[320px] flex items-center justify-center px-4">
-                <p className="text-xl md:text-3xl font-headline text-white/5 leading-relaxed max-w-3xl mx-auto italic transition-all duration-1000 tracking-widest font-light">
+                <p 
+                  className="text-xl md:text-3xl font-headline leading-relaxed max-w-3xl mx-auto italic transition-all duration-1000 tracking-widest font-light"
+                  style={{ color: `rgba(255, 255, 255, ${0.02 + (toneValue[0] / 2000)})` }}
+                >
                   {displayText}
                   <span className="animate-pulse inline-block w-1 h-6 ml-1 bg-white/10" />
                 </p>
               </div>
 
+              {/* Interactive Monochrome Slider */}
+              <div className="max-w-xs mx-auto space-y-4 px-8">
+                <div className="flex justify-between text-[8px] uppercase tracking-[0.5em] text-white/20 font-mono">
+                  <span>Warm</span>
+                  <span className="flex items-center gap-2"><Activity className="h-3 w-3" /> Resonant Tone</span>
+                  <span>Synthetic</span>
+                </div>
+                <Slider 
+                  value={toneValue} 
+                  onValueChange={setToneValue} 
+                  max={100} 
+                  step={1} 
+                  className="opacity-40 hover:opacity-100 transition-opacity"
+                />
+                <p className="text-[7px] text-white/10 font-mono uppercase tracking-[0.2em]">
+                  Modulating Archive Frequency: {(0.5 + toneValue[0]/100).toFixed(2)}x
+                </p>
+              </div>
+
               {/* Shifting Sound Bar Display */}
-              <div className="opacity-10 grayscale contrast-150 scale-125 hover:opacity-20 transition-opacity">
+              <div 
+                className="grayscale contrast-150 transition-all duration-500"
+                style={{ opacity: 0.05 + (toneValue[0] / 1000), transform: `scale(${1 + toneValue[0]/200})` }}
+              >
                 <EchoVisualizer />
               </div>
 
-              <div className="flex flex-col items-center gap-12">
+              <div className="flex flex-col items-center gap-10">
                 <div className="space-y-2">
                   <p className="text-[9px] uppercase tracking-[0.8em] text-white/5 font-mono">
                     Echo Streamed: Layer {activeStoryIdx + 1}
-                  </p>
-                  <p className="text-[7px] uppercase tracking-[0.4em] text-white/5 font-mono">
-                    Conserving Qualitative Human Encounters
                   </p>
                 </div>
                 
@@ -150,12 +191,6 @@ export default function EchoChamberPage() {
           </Button>
         </div>
       </main>
-      
-      <style jsx global>{`
-        .bg-radial-gradient {
-          background: radial-gradient(circle, var(--tw-gradient-from) 0%, transparent 70%);
-        }
-      `}</style>
     </div>
   );
 }
