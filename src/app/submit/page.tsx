@@ -81,6 +81,8 @@ export default function SubmitPage() {
           requestResourceData: storyData,
         });
         errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => {
         setLoading(false);
       });
   };
