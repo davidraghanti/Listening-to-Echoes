@@ -8,14 +8,16 @@ import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
 import { Story } from '@/lib/types';
 import { EchoVisualizer } from '@/components/EchoVisualizer';
-import { ArrowRight, Mic, VolumeX } from 'lucide-react';
+import { ArrowRight, Mic, Volume2, VolumeX } from 'lucide-react';
 import Link from 'next/link';
 
 export default function EchoChamberPage() {
   const db = useFirestore();
   const [activeStoryIdx, setActiveStoryIdx] = useState(0);
   const [displayText, setDisplayText] = useState('');
+  const [isAudioMuted, setIsAudioMuted] = useState(false);
   const textIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const chamberQuery = useMemoFirebase(() => {
     if (!db) return null;
@@ -46,42 +48,62 @@ export default function EchoChamberPage() {
           clearInterval(textIntervalRef.current!);
           setTimeout(() => {
             setActiveStoryIdx((prev) => (prev + 1) % stories.length);
-          }, 4000);
+          }, 5000); // Pause on finished text before rotating
         }
-      }, 50); // Slightly slower for readability
+      }, 40);
     }
     return () => { if (textIntervalRef.current) clearInterval(textIntervalRef.current); };
   }, [stories, activeStoryIdx]);
 
+  const toggleMute = () => {
+    if (audioRef.current) {
+      audioRef.current.muted = !audioRef.current.muted;
+      setIsAudioMuted(audioRef.current.muted);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-black overflow-hidden selection:bg-white/10">
+    <div className="min-h-screen flex flex-col bg-black overflow-hidden selection:bg-white/5">
       <Navbar />
+      
+      {/* Fallback Ambient Audio Loop */}
+      <audio 
+        ref={audioRef}
+        id="ambient-loop" 
+        autoPlay 
+        loop 
+        src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+      />
+
       <main className="flex-1 flex flex-col items-center justify-center p-4 relative">
         {/* Extreme Dark Atmosphere */}
         <div className="absolute inset-0 z-0 bg-black">
-           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-radial-gradient from-accent/5 to-transparent blur-[160px] animate-pulse" />
+           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-radial-gradient from-accent/5 to-transparent blur-[160px] animate-pulse pointer-events-none" />
         </div>
 
         <div className="z-10 w-full max-w-4xl space-y-16">
           {stories && stories.length > 0 ? (
-            <div className="space-y-24 text-center">
-              <div className="min-h-[280px] flex items-center justify-center px-4">
-                <p className="text-lg md:text-2xl font-headline text-white/10 leading-relaxed max-w-2xl mx-auto italic transition-all duration-1000 tracking-wider">
+            <div className="space-y-20 text-center">
+              {/* The Text-Based Tapestry */}
+              <div className="min-h-[320px] flex items-center justify-center px-4">
+                <p className="text-xl md:text-3xl font-headline text-white/5 leading-relaxed max-w-3xl mx-auto italic transition-all duration-1000 tracking-widest font-light">
                   {displayText}
+                  <span className="animate-pulse inline-block w-1 h-6 ml-1 bg-white/10" />
                 </p>
               </div>
 
-              <div className="opacity-20 grayscale contrast-150 scale-110">
+              {/* Shifting Sound Bar Display */}
+              <div className="opacity-10 grayscale contrast-150 scale-125 hover:opacity-20 transition-opacity">
                 <EchoVisualizer />
               </div>
 
               <div className="flex flex-col items-center gap-12">
                 <div className="space-y-2">
                   <p className="text-[9px] uppercase tracking-[0.8em] text-white/5 font-mono">
-                    Echo Layer {activeStoryIdx + 1}
+                    Echo Streamed: Layer {activeStoryIdx + 1}
                   </p>
                   <p className="text-[7px] uppercase tracking-[0.4em] text-white/5 font-mono">
-                    Streaming shared historical threads
+                    Conserving Qualitative Human Encounters
                   </p>
                 </div>
                 
@@ -114,6 +136,18 @@ export default function EchoChamberPage() {
               </Button>
             </div>
           )}
+        </div>
+
+        {/* Audio Controls */}
+        <div className="absolute bottom-8 right-8 z-20">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleMute} 
+            className="text-white/10 hover:text-white/30 hover:bg-transparent"
+          >
+            {isAudioMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+          </Button>
         </div>
       </main>
       
