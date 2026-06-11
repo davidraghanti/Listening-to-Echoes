@@ -20,8 +20,7 @@ export default function ArchivePage() {
 
   const archiveQuery = useMemoFirebase(() => {
     if (!db) return null;
-    // Note: This composite query (status + submittedAt) requires a Firestore Index.
-    // If it fails to load, check the browser console for an index creation link.
+    // Composite query requires an index.
     return query(
       collection(db, 'stories'),
       where('status', '==', 'approved'),
@@ -86,12 +85,13 @@ export default function ArchivePage() {
         {error ? (
           <div className="text-center py-20 border border-destructive/20 rounded-xl bg-destructive/5 space-y-4">
             <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
-            <h3 className="text-lg font-bold">Query Error</h3>
+            <h3 className="text-lg font-bold">Connection or Index Error</h3>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              There was an issue retrieving the archive. This usually happens if the database index is still being built.
-              Please try again in a few moments.
+              We encountered an issue retrieving the archive. This often occurs if the database index is still building or if the Firestore rules are being updated.
             </p>
-            <p className="text-[10px] font-mono text-muted-foreground">{error.message}</p>
+            <p className="text-[10px] font-mono text-muted-foreground p-4 bg-black/20 rounded break-all">
+              {error.message}
+            </p>
           </div>
         ) : loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">

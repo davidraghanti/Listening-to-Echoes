@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,11 +9,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
-import { ShieldCheck, CheckCircle2, Info, Tag, Loader2, RefreshCcw } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, Info, Tag, Loader2 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { useToast } from '@/hooks/use-toast';
 
 export default function SubmitPage() {
@@ -23,29 +23,13 @@ export default function SubmitPage() {
   const db = useFirestore();
   const { toast } = useToast();
 
-  // Safety timeout for loading state
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (loading) {
-      timer = setTimeout(() => {
-        setLoading(false);
-        toast({
-          variant: "destructive",
-          title: "Submission Timeout",
-          description: "The request is taking longer than expected. Please check your connection and try again."
-        });
-      }, 15000);
-    }
-    return () => clearTimeout(timer);
-  }, [loading, toast]);
-
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!db) {
       toast({
         variant: "destructive",
-        title: "Connection Error",
-        description: "Firebase service is not initialized yet. Please wait a moment."
+        title: "Initialization Error",
+        description: "Firebase service is still connecting. Please try again in a moment."
       });
       return;
     }
@@ -70,21 +54,21 @@ export default function SubmitPage() {
 
     const storiesRef = collection(db, 'stories');
     
+    // Non-blocking mutation: Initiate the write and move on.
+    // Firestore handles background sync and local cache updates.
     addDoc(storiesRef, storyData)
-      .then(() => {
-        setSubmitted(true);
-      })
       .catch(async (error) => {
         const permissionError = new FirestorePermissionError({
           path: 'stories',
           operation: 'create',
           requestResourceData: storyData,
-        });
+        } satisfies SecurityRuleContext);
         errorEmitter.emit('permission-error', permissionError);
-      })
-      .finally(() => {
-        setLoading(false);
       });
+
+    // Proceed immediately for a responsive UI
+    setSubmitted(true);
+    setLoading(false);
   };
 
   if (submitted) {
@@ -96,7 +80,7 @@ export default function SubmitPage() {
             <div className="mx-auto w-20 h-20 bg-accent/20 rounded-full flex items-center justify-center">
               <CheckCircle2 className="w-10 h-10 text-accent" />
             </div>
-            <h1 className="text-3xl font-bold font-headline">Recollection Received</h1>
+            <h1 className="text-3xl font-bold font-headline text-white">Recollection Received</h1>
             <p className="text-muted-foreground">
               Thank you for sharing your journey. Your story is now in the **pending queue**. 
               A librarian will review it for privacy before it is permanently archived.
@@ -199,16 +183,10 @@ export default function SubmitPage() {
               >
                 {loading ? (
                   <span className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" /> Securing Entry...
+                    <Loader2 className="h-4 w-4 animate-spin" /> Transmitting...
                   </span>
                 ) : "Submit to Archive"}
               </Button>
-              
-              {loading && (
-                <p className="text-[10px] text-center text-muted-foreground animate-pulse">
-                  Encrypting and queuing your recollection. This may take a few seconds.
-                </p>
-              )}
             </form>
           </CardContent>
         </Card>
