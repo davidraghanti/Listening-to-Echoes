@@ -43,7 +43,8 @@ export function useUser() {
       } else {
         // Fallback: Check if there's an authorization by email
         if (user.email) {
-          const emailDocRef = doc(db, 'users', user.email.toLowerCase());
+          const email = user.email.toLowerCase();
+          const emailDocRef = doc(db, 'users', email);
           const emailSnapshot = await getDoc(emailDocRef);
           
           if (emailSnapshot.exists()) {
@@ -51,11 +52,19 @@ export function useUser() {
             // "Migrate" or link the authorization to the UID for better security/performance
             setDoc(userDocRef, {
               ...data,
-              email: user.email.toLowerCase(),
+              email: email,
               linkedAt: new Date().toISOString()
             }, { merge: true });
             
             setProfile(data);
+          } else if (email === 'davidraghanti@gmail.com') {
+            // Bootstrap the first librarian role
+            const bootstrapProfile: UserProfile = { role: 'librarian', email: email };
+            setDoc(userDocRef, {
+              ...bootstrapProfile,
+              linkedAt: new Date().toISOString()
+            }, { merge: true });
+            setProfile(bootstrapProfile);
           } else {
             setProfile({ role: 'user' });
           }
