@@ -7,5 +7,5 @@ export const firebaseConfig = {
   messagingSenderId: "123456789",
   appId: "1:123456789:web:abcdef123456",
   // The key Id for your sound bucket used for the podcast/RSS feed
-  audioBucketId: "echoes-audio-bucket-v1" 
+  audioBucketId: "0e61b06faeaf" 
 };

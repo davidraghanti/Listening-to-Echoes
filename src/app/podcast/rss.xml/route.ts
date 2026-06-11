@@ -20,21 +20,21 @@ export async function GET() {
   const querySnapshot = await getDocs(q);
   const items = querySnapshot.docs.map(doc => {
     const data = doc.data();
-    // Use the bucket ID to ensure full URLs if relative paths are stored
+    // If the audioUrl is just a filename, prepend the storage URL using the audioBucketId
     const fullAudioUrl = data.audioUrl?.startsWith('http') 
       ? data.audioUrl 
       : `https://storage.googleapis.com/${firebaseConfig.audioBucketId}/${data.audioUrl}`;
 
     return `
       <item>
-        <title><![CDATA[${data.title}]]></title>
-        <description><![CDATA[${data.content}]]></description>
+        <title><![CDATA[${data.title}\u005D\u005D\u003E</title>
+        <description><![CDATA[${data.content}\u005D\u005D\u003E</description>
         <pubDate>${new Date(data.submittedAt).toUTCString()}</pubDate>
         <link>https://listening-to-echoes.web.app/archive</link>
         <guid isPermaLink="false">${doc.id}</guid>
         <enclosure url="${fullAudioUrl}" length="0" type="audio/mpeg" />
         <itunes:author>Listening to Echoes</itunes:author>
-        <itunes:summary><![CDATA[${data.content}]]></itunes:summary>
+        <itunes:summary><![CDATA[${data.content}\u005D\u005D\u003E</itunes:summary>
       </item>
     `;
   }).join('');
