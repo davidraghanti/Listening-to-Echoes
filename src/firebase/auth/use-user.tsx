@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth, useFirestore } from '../provider';
 
 export interface UserProfile {
@@ -34,14 +34,39 @@ export function useUser() {
     if (!db || !user) return;
 
     const userDocRef = doc(db, 'users', user.uid);
-    return onSnapshot(userDocRef, (snapshot) => {
+    
+    // First, listen to the UID-based document
+    const unsubscribe = onSnapshot(userDocRef, async (snapshot) => {
       if (snapshot.exists()) {
         setProfile(snapshot.data() as UserProfile);
+        setLoading(false);
       } else {
-        setProfile({ role: 'user' });
+        // Fallback: Check if there's an authorization by email
+        if (user.email) {
+          const emailDocRef = doc(db, 'users', user.email.toLowerCase());
+          const emailSnapshot = await getDoc(emailDocRef);
+          
+          if (emailSnapshot.exists()) {
+            const data = emailSnapshot.data() as UserProfile;
+            // "Migrate" or link the authorization to the UID for better security/performance
+            setDoc(userDocRef, {
+              ...data,
+              email: user.email.toLowerCase(),
+              linkedAt: new Date().toISOString()
+            }, { merge: true });
+            
+            setProfile(data);
+          } else {
+            setProfile({ role: 'user' });
+          }
+        } else {
+          setProfile({ role: 'user' });
+        }
+        setLoading(false);
       }
-      setLoading(false);
     });
+
+    return () => unsubscribe();
   }, [db, user]);
 
   return { user, profile, loading };
