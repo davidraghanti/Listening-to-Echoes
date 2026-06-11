@@ -6,11 +6,12 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Volume2, BookOpen, Loader2 } from 'lucide-react';
+import { Search, Volume2, BookOpen, Loader2, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { Story } from '@/lib/types';
+import Link from 'next/link';
 
 export default function ArchivePage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -19,6 +20,8 @@ export default function ArchivePage() {
 
   const archiveQuery = useMemoFirebase(() => {
     if (!db) return null;
+    // Note: This composite query (status + submittedAt) requires a Firestore Index.
+    // If it fails to load, check the browser console for an index creation link.
     return query(
       collection(db, 'stories'),
       where('status', '==', 'approved'),
@@ -26,7 +29,7 @@ export default function ArchivePage() {
     );
   }, [db]);
 
-  const { data: stories, loading } = useCollection<Story>(archiveQuery);
+  const { data: stories, loading, error } = useCollection<Story>(archiveQuery);
 
   const filteredStories = stories?.filter(story => {
     const matchesSearch = story.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -80,14 +83,39 @@ export default function ArchivePage() {
           </div>
         </div>
 
-        {loading ? (
+        {error ? (
+          <div className="text-center py-20 border border-destructive/20 rounded-xl bg-destructive/5 space-y-4">
+            <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
+            <h3 className="text-lg font-bold">Query Error</h3>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              There was an issue retrieving the archive. This usually happens if the database index is still being built.
+              Please try again in a few moments.
+            </p>
+            <p className="text-[10px] font-mono text-muted-foreground">{error.message}</p>
+          </div>
+        ) : loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <Loader2 className="h-8 w-8 text-accent animate-spin" />
-            <p className="text-sm text-muted-foreground font-mono">Retrieving historical threads...</p>
+            <p className="text-sm text-muted-foreground font-mono italic">Retrieving historical threads...</p>
           </div>
         ) : filteredStories.length === 0 ? (
-          <div className="text-center py-20 border border-dashed rounded-xl border-muted">
-            <p className="text-muted-foreground">No stories found matching your criteria.</p>
+          <div className="text-center py-20 border border-dashed rounded-xl border-muted space-y-6">
+            <div className="space-y-2">
+              <p className="text-muted-foreground">The public archive is currently empty or pending librarian approval.</p>
+              <p className="text-xs text-muted-foreground/60 italic">Connections here are reflective, internal, and profound.</p>
+            </div>
+            
+            <div className="flex flex-col items-center gap-4">
+              <Link href="/submit">
+                <Badge variant="outline" className="border-accent text-accent px-6 py-2 cursor-pointer hover:bg-accent hover:text-background transition-colors">
+                  Be the first echo
+                </Badge>
+              </Link>
+              
+              <Link href="/librarian" className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-accent flex items-center gap-1">
+                <ShieldCheck className="h-3 w-3" /> Internal Review Dashboard
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="archive-grid">

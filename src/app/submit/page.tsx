@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
-import { ShieldCheck, CheckCircle2, Info, Tag, Loader2 } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, Info, Tag, Loader2, RefreshCcw } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -22,6 +22,22 @@ export default function SubmitPage() {
   const [tone, setTone] = useState([50]);
   const db = useFirestore();
   const { toast } = useToast();
+
+  // Safety timeout for loading state
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (loading) {
+      timer = setTimeout(() => {
+        setLoading(false);
+        toast({
+          variant: "destructive",
+          title: "Submission Timeout",
+          description: "The request is taking longer than expected. Please check your connection and try again."
+        });
+      }, 15000);
+    }
+    return () => clearTimeout(timer);
+  }, [loading, toast]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -48,13 +64,12 @@ export default function SubmitPage() {
       tone: tone[0],
       status: 'pending',
       tags: tags,
-      submittedAt: new Date().toISOString(), // Using ISO string to match Story type and backend.json
+      submittedAt: new Date().toISOString(),
       piiDetected: false,
     };
 
     const storiesRef = collection(db, 'stories');
     
-    // Non-blocking mutation: initiate write and proceed
     addDoc(storiesRef, storyData)
       .then(() => {
         setSubmitted(true);
@@ -66,7 +81,7 @@ export default function SubmitPage() {
           requestResourceData: storyData,
         });
         errorEmitter.emit('permission-error', permissionError);
-        setLoading(false); // Reset loading on error so they can try again
+        setLoading(false);
       });
   };
 
@@ -81,11 +96,17 @@ export default function SubmitPage() {
             </div>
             <h1 className="text-3xl font-bold font-headline">Recollection Received</h1>
             <p className="text-muted-foreground">
-              Thank you for sharing your journey. Our librarians will review your submission for privacy before it is added to the archive.
+              Thank you for sharing your journey. Your story is now in the **pending queue**. 
+              A librarian will review it for privacy before it is permanently archived.
             </p>
-            <Button asChild className="w-full bg-accent text-background hover:bg-accent/90 rounded-full">
-              <a href="/archive">Back to Archive</a>
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button asChild className="w-full bg-accent text-background hover:bg-accent/90 rounded-full">
+                <a href="/archive">Enter Archive</a>
+              </Button>
+              <Button variant="ghost" onClick={() => setSubmitted(false)} className="text-xs text-muted-foreground uppercase tracking-widest">
+                Submit Another Echo
+              </Button>
+            </div>
           </div>
         </main>
       </div>
@@ -99,7 +120,7 @@ export default function SubmitPage() {
         <div className="mb-8 space-y-2">
           <h1 className="text-4xl font-bold font-headline text-accent">Share Your Echo</h1>
           <p className="text-muted-foreground">
-            Contribute your written or spoken experience. All entries are reviewed for privacy before publishing.
+            Contribute your written experience. All entries are reviewed for privacy before publishing.
           </p>
         </div>
 
@@ -180,6 +201,12 @@ export default function SubmitPage() {
                   </span>
                 ) : "Submit to Archive"}
               </Button>
+              
+              {loading && (
+                <p className="text-[10px] text-center text-muted-foreground animate-pulse">
+                  Encrypting and queuing your recollection. This may take a few seconds.
+                </p>
+              )}
             </form>
           </CardContent>
         </Card>
