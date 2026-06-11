@@ -11,9 +11,11 @@ import { AlertCircle, ShieldCheck, Tag, Check, X, Sparkles, UserRound, MapPin, C
 import { detectPiiInStory, LibrarianPiiDetectionOutput } from '@/ai/flows/librarian-pii-detection';
 import { librarianAutomatedTaggingAndTrends, LibrarianAutomatedTaggingAndTrendsOutput } from '@/ai/flows/librarian-automated-tagging-and-trends-flow';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { Story } from '@/lib/types';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function LibrarianDashboard() {
   const { user, profile, loading: authLoading } = useUser();
@@ -59,28 +61,49 @@ export default function LibrarianDashboard() {
     }
   };
 
-  const handleApprove = async (id: string) => {
+  const handleApprove = (id: string) => {
     if (!db) return;
     const docRef = doc(db, 'stories', id);
-    // Combine suggested tags with AI tags for final approval
     const finalTags = Array.from(new Set([
       ...(activeStory?.tags || []),
       ...(aiAnalysis.tags?.thematicTags || [])
     ]));
 
-    await updateDoc(docRef, { 
+    const updateData = { 
       status: 'approved',
       tags: finalTags,
       piiDetected: aiAnalysis.pii?.hasPii || false
-    });
+    };
+
+    updateDoc(docRef, updateData)
+      .catch(async (err) => {
+        const pError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'update',
+          requestResourceData: updateData
+        });
+        errorEmitter.emit('permission-error', pError);
+      });
+      
     setSelectedStoryId(null);
     setAiAnalysis({ pii: null, tags: null, loading: false });
   };
 
-  const handleReject = async (id: string) => {
+  const handleReject = (id: string) => {
     if (!db) return;
     const docRef = doc(db, 'stories', id);
-    await updateDoc(docRef, { status: 'rejected' });
+    const updateData = { status: 'rejected' };
+    
+    updateDoc(docRef, updateData)
+      .catch(async (err) => {
+        const pError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'update',
+          requestResourceData: updateData
+        });
+        errorEmitter.emit('permission-error', pError);
+      });
+
     setSelectedStoryId(null);
     setAiAnalysis({ pii: null, tags: null, loading: false });
   };
@@ -132,7 +155,9 @@ export default function LibrarianDashboard() {
                 >
                   <CardHeader className="p-4">
                     <CardTitle className="text-md font-headline line-clamp-1">{story.title}</CardTitle>
-                    <p className="text-xs text-muted-foreground">Submitted {story.submittedAt ? format(new Date(story.submittedAt), 'MMM d, yyyy') : 'unknown date'}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Submitted {story.submittedAt ? format(new Date(story.submittedAt), 'MMM d, yyyy') : 'unknown date'}
+                    </p>
                   </CardHeader>
                 </Card>
               ))
@@ -171,7 +196,7 @@ export default function LibrarianDashboard() {
                   <CardContent className="pt-6 space-y-4">
                     <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground bg-muted/20 p-2 rounded">
                        <span className="flex items-center gap-1"><Info className="h-3 w-3" /> User-assigned Tone: {activeStory.tone}%</span>
-                       <span>Submitted: {format(new Date(activeStory.submittedAt), 'PPp')}</span>
+                       <span>Submitted: {activeStory.submittedAt ? format(new Date(activeStory.submittedAt), 'PPp') : 'Recently'}</span>
                     </div>
                     <p className="whitespace-pre-wrap leading-relaxed text-foreground">
                       {activeStory.content}

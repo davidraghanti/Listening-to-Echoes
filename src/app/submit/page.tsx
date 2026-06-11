@@ -9,9 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
-import { ShieldCheck, CheckCircle2, Info, Tag } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, Info, Tag, Loader2 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useToast } from '@/hooks/use-toast';
@@ -23,13 +23,13 @@ export default function SubmitPage() {
   const db = useFirestore();
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!db) {
       toast({
         variant: "destructive",
         title: "Connection Error",
-        description: "Firebase service is not initialized."
+        description: "Firebase service is not initialized yet. Please wait a moment."
       });
       return;
     }
@@ -48,30 +48,25 @@ export default function SubmitPage() {
       tone: tone[0],
       status: 'pending',
       tags: tags,
-      submittedAt: serverTimestamp(),
+      submittedAt: new Date().toISOString(), // Using ISO string to match Story type and backend.json
       piiDetected: false,
     };
 
     const storiesRef = collection(db, 'stories');
     
+    // Non-blocking mutation: initiate write and proceed
     addDoc(storiesRef, storyData)
       .then(() => {
         setSubmitted(true);
       })
       .catch(async (error) => {
-        // Log the actual error for debugging
-        console.error("Submission failed:", error);
-        
-        // Handle as permission error for the specialized listener
         const permissionError = new FirestorePermissionError({
           path: 'stories',
           operation: 'create',
           requestResourceData: storyData,
         });
         errorEmitter.emit('permission-error', permissionError);
-      })
-      .finally(() => {
-        setLoading(false);
+        setLoading(false); // Reset loading on error so they can try again
       });
   };
 
@@ -179,7 +174,11 @@ export default function SubmitPage() {
                 className="w-full h-12 bg-accent text-background hover:bg-accent/90 text-lg font-semibold rounded-full"
                 disabled={loading}
               >
-                {loading ? "Securing Entry..." : "Submit to Archive"}
+                {loading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Securing Entry...
+                  </span>
+                ) : "Submit to Archive"}
               </Button>
             </form>
           </CardContent>
