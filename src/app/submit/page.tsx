@@ -11,24 +11,32 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Slider } from '@/components/ui/slider';
 import { ShieldCheck, CheckCircle2, Info, Tag } from 'lucide-react';
 import { useFirestore } from '@/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { useToast } from '@/hooks/use-toast';
 
 export default function SubmitPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [tone, setTone] = useState([50]);
   const db = useFirestore();
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!db) return;
+    if (!db) {
+      toast({
+        variant: "destructive",
+        title: "Connection Error",
+        description: "Firebase service is not initialized."
+      });
+      return;
+    }
 
     setLoading(true);
     const formData = new FormData(e.currentTarget);
     
-    // Process tags from comma-separated string
     const tagsInput = formData.get('tags') as string;
     const tags = tagsInput 
       ? tagsInput.split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag !== "")
@@ -40,23 +48,29 @@ export default function SubmitPage() {
       tone: tone[0],
       status: 'pending',
       tags: tags,
-      submittedAt: new Date().toISOString(),
+      submittedAt: serverTimestamp(),
       piiDetected: false,
     };
 
     const storiesRef = collection(db, 'stories');
+    
     addDoc(storiesRef, storyData)
       .then(() => {
         setSubmitted(true);
-        setLoading(false);
       })
       .catch(async (error) => {
+        // Log the actual error for debugging
+        console.error("Submission failed:", error);
+        
+        // Handle as permission error for the specialized listener
         const permissionError = new FirestorePermissionError({
           path: 'stories',
           operation: 'create',
           requestResourceData: storyData,
         });
         errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => {
         setLoading(false);
       });
   };
