@@ -1,59 +1,79 @@
+
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { useAuth, useUser } from '@/firebase';
-import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { LogIn, Loader2, AlertCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { useAuth, useFirestore, useUser } from '@/firebase';
+import { signInAnonymously } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { Lock, Loader2, Key } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
-  const { user, loading } = useUser();
+  const [code, setCode] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
   const auth = useAuth();
+  const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  useEffect(() => {
-    if (!loading && user) {
-      router.push('/');
-    }
-  }, [user, loading, router]);
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!auth || !db) return;
 
-  const handleGoogleLogin = async () => {
-    if (!auth) {
+    if (code.length !== 10) {
       toast({
         variant: "destructive",
-        title: "Configuration Error",
-        description: "Firebase Auth is not initialized. Check your environment variables."
+        title: "Invalid Code",
+        description: "Access codes must be exactly 10 digits."
       });
       return;
     }
 
-    setIsLoggingIn(true);
+    setIsVerifying(true);
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      // 1. Check if code exists in Firestore
+      const codeRef = doc(db, 'access_codes', code);
+      const codeSnap = await getDoc(codeRef);
+
+      if (!codeSnap.exists()) {
+        throw new Error("The access code entered is not recognized by the repository.");
+      }
+
+      const { role } = codeSnap.data();
+
+      // 2. Sign in anonymously to get a stable UID
+      const userCredential = await signInAnonymously(auth);
+      const user = userCredential.user;
+
+      // 3. Create/Update profile with the granted role
+      await setDoc(doc(db, 'users', user.uid), {
+        role,
+        grantedAt: new Date().toISOString(),
+        codeUsed: code
+      }, { merge: true });
+
+      toast({
+        title: "Access Granted",
+        description: `Welcome. You have been authenticated as a ${role}.`
+      });
+
+      router.push(role === 'librarian' ? '/librarian' : '/author');
     } catch (error: any) {
       console.error('Login failed', error);
       toast({
         variant: "destructive",
-        title: "Login Failed",
-        description: error.message || "An unexpected error occurred during sign-in."
+        title: "Access Denied",
+        description: error.message || "Could not verify code."
       });
     } finally {
-      setIsLoggingIn(false);
+      setIsVerifying(false);
     }
   };
-
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <Loader2 className="h-8 w-8 animate-spin text-accent" />
-    </div>
-  );
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -61,33 +81,44 @@ export default function LoginPage() {
       <main className="flex-1 flex items-center justify-center p-4">
         <Card className="max-w-md w-full border-muted bg-card/50 backdrop-blur-sm">
           <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-headline">Internal Access</CardTitle>
+            <CardTitle className="text-3xl font-headline flex items-center justify-center gap-2">
+              <Lock className="h-6 w-6 text-accent" />
+              Internal Access
+            </CardTitle>
             <CardDescription>
-              Authorized personnel only. Please sign in to access internal archives and creative tools.
+              Enter your 10-digit archival access code to authenticate.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <Button 
-              onClick={handleGoogleLogin} 
-              disabled={isLoggingIn}
-              className="w-full h-12 bg-accent text-background hover:bg-accent/90 rounded-full font-semibold"
-            >
-              {isLoggingIn ? (
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              ) : (
-                <LogIn className="mr-2 h-5 w-5" />
-              )}
-              {isLoggingIn ? "Connecting..." : "Sign In with Google"}
-            </Button>
-
-            {!process.env.NEXT_PUBLIC_FIREBASE_API_KEY && (
-              <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 flex gap-2 text-[10px] text-destructive leading-tight">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                <p>
-                  <strong>Missing Configuration:</strong> You must set your Firebase Environment Variables in Vercel/GitHub for authentication to work.
+          <CardContent>
+            <form onSubmit={handleVerifyCode} className="space-y-4">
+              <div className="space-y-2">
+                <div className="relative">
+                  <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    type="text"
+                    maxLength={10}
+                    placeholder="0000000000"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                    className="pl-10 h-12 bg-muted/20 border-muted text-center text-xl tracking-[0.5em] font-mono"
+                  />
+                </div>
+                <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest">
+                  Archival codes are managed by the repository lead.
                 </p>
               </div>
-            )}
+
+              <Button 
+                type="submit" 
+                disabled={isVerifying || code.length !== 10}
+                className="w-full h-12 bg-accent text-background hover:bg-accent/90 rounded-full font-semibold"
+              >
+                {isVerifying ? (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : null}
+                {isVerifying ? "Verifying..." : "Verify Code"}
+              </Button>
+            </form>
           </CardContent>
         </Card>
       </main>

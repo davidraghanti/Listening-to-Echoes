@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -9,21 +10,21 @@ service cloud.firestore {
 
     // Stories Collection
     match /stories/{storyId} {
-      // Anyone can submit a story
       allow create: if true;
-      
-      // Public can only read approved stories. Librarians/Authors can read all.
       allow read: if resource.data.status == 'approved' || hasRole('librarian') || hasRole('author');
-      
-      // Only librarians can update or delete stories (approval process)
       allow update, delete: if hasRole('librarian');
     }
 
     // User Profiles Collection
     match /users/{userId} {
-      // Users can read/write their own profile. Librarians can read all for the team directory.
       allow read: if request.auth != null && (request.auth.uid == userId || hasRole('librarian'));
       allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Access Codes (Lookup only if you know the 10-digit ID)
+    match /access_codes/{codeId} {
+      allow get: if true;
+      allow list: if hasRole('librarian');
     }
   }
 }
