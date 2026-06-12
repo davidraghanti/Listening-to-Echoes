@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, ShieldCheck, Tag, Check, X, Sparkles, UserRound, MapPin, Calendar, Lock, Loader2, Info, Mic, AlertTriangle } from 'lucide-react';
+import { AlertCircle, ShieldCheck, Tag, Check, X, Sparkles, Lock, Loader2, Info, Mic, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { detectPiiInStory, LibrarianPiiDetectionOutput } from '@/ai/flows/librarian-pii-detection';
 import { librarianAutomatedTaggingAndTrends, LibrarianAutomatedTaggingAndTrendsOutput } from '@/ai/flows/librarian-automated-tagging-and-trends-flow';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -19,6 +19,7 @@ import { Story } from '@/lib/types';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 export default function LibrarianDashboard() {
   const { user, profile, loading: authLoading } = useUser();
@@ -34,6 +35,7 @@ export default function LibrarianDashboard() {
     loading: boolean;
   }>({ pii: null, tags: null, loading: false });
 
+  // Query pending stories - Note: This requires a composite index on (status, submittedAt)
   const pendingQuery = useMemoFirebase(() => {
     if (!db) return null;
     return query(
@@ -46,11 +48,13 @@ export default function LibrarianDashboard() {
   const { data: pendingStories, loading: storiesLoading, error: storiesError } = useCollection<Story>(pendingQuery);
   const activeStory = pendingStories?.find(s => s.id === selectedStoryId);
 
+  // Run AI Analysis when a story is selected
   useEffect(() => {
-    if (!authLoading && (!user || profile?.role !== 'librarian')) {
-      router.push('/login');
+    if (activeStory) {
+      runAiAnalysis(activeStory.content);
+      setAudioUrl(activeStory.audioUrl || '');
     }
-  }, [user, profile, authLoading, router]);
+  }, [selectedStoryId]);
 
   const runAiAnalysis = async (text: string) => {
     setAiAnalysis({ pii: null, tags: null, loading: true });
@@ -61,7 +65,7 @@ export default function LibrarianDashboard() {
       ]);
       setAiAnalysis({ pii: piiResult, tags: tagsResult, loading: false });
     } catch (error) {
-      console.error(error);
+      console.error("AI Analysis failed:", error);
       setAiAnalysis({ pii: null, tags: null, loading: false });
     }
   };
@@ -87,6 +91,7 @@ export default function LibrarianDashboard() {
           title: "Echo Approved",
           description: "Story has been permanently archived."
         });
+        setSelectedStoryId(null);
       })
       .catch(async (err) => {
         const pError = new FirestorePermissionError({
@@ -96,10 +101,6 @@ export default function LibrarianDashboard() {
         });
         errorEmitter.emit('permission-error', pError);
       });
-      
-    setSelectedStoryId(null);
-    setAudioUrl('');
-    setAiAnalysis({ pii: null, tags: null, loading: false });
   };
 
   const handleReject = (id: string) => {
@@ -108,6 +109,10 @@ export default function LibrarianDashboard() {
     const updateData = { status: 'rejected' };
     
     updateDoc(docRef, updateData)
+      .then(() => {
+        toast({ title: "Submission Rejected", description: "Entry removed from queue." });
+        setSelectedStoryId(null);
+      })
       .catch(async (err) => {
         const pError = new FirestorePermissionError({
           path: docRef.path,
@@ -116,19 +121,43 @@ export default function LibrarianDashboard() {
         });
         errorEmitter.emit('permission-error', pError);
       });
-
-    setSelectedStoryId(null);
-    setAudioUrl('');
-    setAiAnalysis({ pii: null, tags: null, loading: false });
   };
 
-  if (authLoading || !user || profile?.role !== 'librarian') {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <Lock className="h-12 w-12 text-muted-foreground mx-auto animate-pulse" />
-          <h2 className="text-xl font-headline font-bold">Verifying Credentials...</h2>
-        </div>
+        <Loader2 className="h-10 w-10 animate-spin text-accent" />
+      </div>
+    );
+  }
+
+  // If user is not logged in or not a librarian
+  if (!user || profile?.role !== 'librarian') {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center p-4">
+          <Card className="max-w-md w-full border-destructive/20 bg-destructive/5">
+            <CardHeader className="text-center">
+              <ShieldAlert className="h-12 w-12 text-destructive mx-auto mb-4" />
+              <CardTitle className="text-2xl font-headline">Access Restricted</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <p className="text-muted-foreground text-sm">
+                You are currently signed in as <span className="text-foreground font-mono">{user?.email || 'Anonymous'}</span>. 
+                This area is reserved for authorized Librarians.
+              </p>
+              {!user && (
+                <Button asChild className="w-full bg-accent text-background">
+                  <Link href="/login">Sign In</Link>
+                </Button>
+              )}
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/">Return Home</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
       </div>
     );
   }
@@ -161,7 +190,7 @@ export default function LibrarianDashboard() {
                   <span>Queue Error</span>
                 </div>
                 <p className="text-xs leading-relaxed">
-                  This query requires a composite index. Check the browser console for the direct link to create it in the Firebase Console.
+                  The pending queue requires a Firestore composite index. If you are the developer, click the link in your browser's console to create it.
                 </p>
               </div>
             ) : storiesLoading ? (
@@ -173,11 +202,7 @@ export default function LibrarianDashboard() {
                 <Card 
                   key={story.id} 
                   className={`cursor-pointer transition-all ${selectedStoryId === story.id ? 'border-accent bg-accent/5' : 'border-muted hover:border-muted-foreground'}`}
-                  onClick={() => {
-                    setSelectedStoryId(story.id);
-                    setAudioUrl(story.audioUrl || '');
-                    runAiAnalysis(story.content);
-                  }}
+                  onClick={() => setSelectedStoryId(story.id)}
                 >
                   <CardHeader className="p-4">
                     <CardTitle className="text-md font-headline line-clamp-1">{story.title}</CardTitle>
@@ -232,16 +257,16 @@ export default function LibrarianDashboard() {
                       
                       <div className="pt-6 border-t border-muted/30 space-y-4">
                         <Label className="flex items-center gap-2 text-xs uppercase tracking-widest text-accent">
-                          <Mic className="h-3 w-3" /> Link Archival Audio (Sound Bucket)
+                          <Mic className="h-3 w-3" /> Link Archival Audio
                         </Label>
                         <Input 
-                          placeholder="e.g., reflections/story-001.mp3"
+                          placeholder="e.g., episode-001.mp3"
                           value={audioUrl}
                           onChange={(e) => setAudioUrl(e.target.value)}
                           className="bg-muted/30 border-muted text-xs h-10"
                         />
                         <p className="text-[10px] text-muted-foreground italic">
-                          Enter the filename from bucket 0e61b06faeaf to link this story to a podcast episode.
+                          Filename from bucket 0e61b06faeaf
                         </p>
                       </div>
                     </div>

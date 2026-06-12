@@ -9,8 +9,13 @@ import { useAuth, useFirestore } from '../provider';
 export interface UserProfile {
   role?: 'user' | 'librarian' | 'author';
   email?: string;
+  linkedAt?: string;
 }
 
+/**
+ * Hook to manage the current user state and their Firestore profile.
+ * Handles automatic bootstrapping for the primary admin email.
+ */
 export function useUser() {
   const auth = useAuth();
   const db = useFirestore();
@@ -35,15 +40,17 @@ export function useUser() {
 
     const userDocRef = doc(db, 'users', user.uid);
     
+    // Listen to the user's private profile document
     const unsubscribe = onSnapshot(userDocRef, async (snapshot) => {
       if (snapshot.exists()) {
         setProfile(snapshot.data() as UserProfile);
         setLoading(false);
       } else {
+        // Handle First-time Sign-in / Bootstrapping
         if (user.email) {
           const email = user.email.toLowerCase();
           
-          // Check for manual bootstrap or explicit email-based authorization
+          // 1. Check for manual pre-authorization in the email-based collection
           const emailDocRef = doc(db, 'users', email);
           const emailSnapshot = await getDoc(emailDocRef);
           
@@ -55,21 +62,33 @@ export function useUser() {
               linkedAt: new Date().toISOString()
             }, { merge: true });
             setProfile(data);
-          } else if (email === 'davidraghanti@gmail.com') {
-            const bootstrapProfile: UserProfile = { role: 'librarian', email: email };
+          } 
+          // 2. Bootstrap primary admin email
+          else if (email === 'davidraghanti@gmail.com') {
+            const bootstrapProfile: UserProfile = { 
+              role: 'librarian', 
+              email: email 
+            };
             await setDoc(userDocRef, {
               ...bootstrapProfile,
               linkedAt: new Date().toISOString()
             }, { merge: true });
             setProfile(bootstrapProfile);
-          } else {
-            setProfile({ role: 'user', email });
+          } 
+          // 3. Default to standard user
+          else {
+            const defaultProfile: UserProfile = { role: 'user', email };
+            // Optional: You could write this to DB too, but we can just set state
+            setProfile(defaultProfile);
           }
         } else {
           setProfile({ role: 'user' });
         }
         setLoading(false);
       }
+    }, (error) => {
+      console.error("Profile listener error:", error);
+      setLoading(false);
     });
 
     return () => unsubscribe();
