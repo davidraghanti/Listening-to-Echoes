@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,6 +12,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Lock, Loader2, Key, AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { firebaseConfig } from '@/firebase/config';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [code, setCode] = useState('');
@@ -148,7 +148,7 @@ export default function LoginPage() {
                       type="text"
                       inputMode="numeric"
                       maxLength={10}
-                      placeholder="3305021271"
+                      placeholder="0000000000"
                       value={code}
                       onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                       className="pl-10 h-14 bg-muted/20 border-muted text-center text-2xl tracking-[0.5em] font-mono focus:ring-accent"
@@ -190,4 +190,3 @@ export default function LoginPage() {
     </div>
   );
 }
-import Link from 'next/link';
