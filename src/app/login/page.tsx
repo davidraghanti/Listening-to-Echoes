@@ -9,15 +9,14 @@ import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { signInAnonymously } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { Lock, Loader2, Key, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Lock, Loader2, Key, CheckCircle2, ShieldAlert, WifiOff, RefreshCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { firebaseConfig } from '@/firebase/config';
-import Link from 'next/link';
 
 export default function LoginPage() {
   const [code, setCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'ok' | 'error'>('checking');
+  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'ok' | 'error' | 'offline'>('checking');
   
   const auth = useAuth();
   const db = useFirestore();
@@ -25,11 +24,27 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    if (firebaseConfig.apiKey && firebaseConfig.projectId) {
-      setConnectionStatus('ok');
-    } else {
-      setConnectionStatus('error');
-    }
+    const checkConnectivity = () => {
+      if (!navigator.onLine) {
+        setConnectionStatus('offline');
+        return;
+      }
+
+      if (firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.apiKey !== 'YOUR_API_KEY') {
+        setConnectionStatus('ok');
+      } else {
+        setConnectionStatus('error');
+      }
+    };
+
+    checkConnectivity();
+    window.addEventListener('online', checkConnectivity);
+    window.addEventListener('offline', checkConnectivity);
+    
+    return () => {
+      window.removeEventListener('online', checkConnectivity);
+      window.removeEventListener('offline', checkConnectivity);
+    };
   }, []);
 
   const handleVerifyCode = async (e: React.FormEvent) => {
@@ -38,8 +53,8 @@ export default function LoginPage() {
     if (!auth || !db) {
       toast({
         variant: "destructive",
-        title: "Initialization Pending",
-        description: "Firebase services are still connecting. Please try again."
+        title: "Services Not Ready",
+        description: "Firebase is still initializing. Please wait a moment."
       });
       return;
     }
@@ -60,7 +75,7 @@ export default function LoginPage() {
       const codeSnap = await getDoc(codeRef);
 
       if (!codeSnap.exists()) {
-        throw new Error(`Code [${code}] not found in database.`);
+        throw new Error(`The code [${code}] was not recognized by the archive.`);
       }
 
       const { role } = codeSnap.data();
@@ -69,7 +84,7 @@ export default function LoginPage() {
       const userCredential = await signInAnonymously(auth);
       const user = userCredential.user;
 
-      // 3. Link role to session - Await the write to ensure it's in the DB before navigating
+      // 3. Link role to session
       await setDoc(doc(db, 'users', user.uid), {
         role,
         grantedAt: new Date().toISOString(),
@@ -78,21 +93,21 @@ export default function LoginPage() {
       }, { merge: true });
 
       toast({
-        title: "Access Granted",
-        description: `Session initialized as: ${role}.`
+        title: "Protocol Accepted",
+        description: `Session initialized with ${role} clearance.`
       });
 
-      // Small delay to ensure Firestore listeners catch the profile update
+      // Navigate after a short delay for state propagation
       setTimeout(() => {
         router.push(role === 'librarian' ? '/librarian' : '/author');
-      }, 500);
+      }, 800);
       
     } catch (error: any) {
-      console.error('Login Verification Error:', error);
+      console.error('Login Error:', error);
       toast({
         variant: "destructive",
         title: "Access Denied",
-        description: error.message || "An unexpected error occurred."
+        description: error.message || "Connection refused by host."
       });
     } finally {
       setIsVerifying(false);
@@ -106,10 +121,18 @@ export default function LoginPage() {
         <div className="max-w-md w-full space-y-4">
           
           <div className="space-y-2">
-            {connectionStatus === 'error' ? (
+            {connectionStatus === 'offline' ? (
+              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3 text-destructive text-xs">
+                <WifiOff className="h-5 w-5 shrink-0" />
+                <p>Browser is offline. Please check your internet connection.</p>
+              </div>
+            ) : connectionStatus === 'error' ? (
               <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3 text-destructive text-xs">
                 <ShieldAlert className="h-5 w-5 shrink-0" />
-                <p>Environment Variables missing. Check Vercel project settings.</p>
+                <div className="space-y-1">
+                  <p className="font-bold">Invalid Configuration</p>
+                  <p>Environment variables are missing. Check Vercel project settings.</p>
+                </div>
               </div>
             ) : (
               <div className="p-3 bg-accent/5 border border-accent/20 rounded-lg flex items-center gap-3 text-accent text-[10px] uppercase tracking-widest font-bold">
@@ -143,13 +166,14 @@ export default function LoginPage() {
                       onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                       className="pl-10 h-14 bg-muted/20 border-muted text-center text-2xl tracking-[0.5em] font-mono focus:ring-accent"
                       autoFocus
+                      disabled={connectionStatus === 'offline' || connectionStatus === 'error'}
                     />
                   </div>
                 </div>
 
                 <Button 
                   type="submit" 
-                  disabled={isVerifying || code.length !== 10 || connectionStatus === 'error'}
+                  disabled={isVerifying || code.length !== 10 || connectionStatus !== 'ok'}
                   className="w-full h-14 bg-accent text-background hover:bg-accent/90 rounded-full font-bold text-lg transition-all"
                 >
                   {isVerifying ? (
@@ -157,13 +181,23 @@ export default function LoginPage() {
                   ) : null}
                   {isVerifying ? "Verifying..." : "Validate Echo"}
                 </Button>
+
+                {connectionStatus !== 'ok' && (
+                  <Button 
+                    variant="ghost" 
+                    className="w-full text-xs text-muted-foreground"
+                    onClick={() => window.location.reload()}
+                  >
+                    <RefreshCcw className="h-3 w-3 mr-2" /> Retry Connection
+                  </Button>
+                )}
               </form>
             </CardContent>
           </Card>
           
           <div className="text-center space-y-2">
             <p className="text-[9px] text-muted-foreground uppercase tracking-widest opacity-50">
-              System: Educational Experience Archive // Internal Node 01
+              System: Educational Experience Archive // Node: {typeof window !== 'undefined' ? window.location.hostname : 'archive'}
             </p>
           </div>
         </div>
