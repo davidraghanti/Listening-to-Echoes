@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -17,7 +18,7 @@ export default function LoginPage() {
   const [code, setCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'ok' | 'error' | 'offline'>('checking');
-  const [hostname, setHostname] = useState('archive');
+  const [isMounted, setIsMounted] = useState(false);
   
   const auth = useAuth();
   const db = useFirestore();
@@ -25,8 +26,7 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Prevent hydration mismatch by setting hostname after mount
-    setHostname(window.location.hostname);
+    setIsMounted(true);
 
     const checkConnectivity = () => {
       if (!navigator.onLine) {
@@ -34,7 +34,10 @@ export default function LoginPage() {
         return;
       }
 
-      if (firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.apiKey !== 'YOUR_API_KEY') {
+      // Check if essential config exists
+      const hasConfig = !!(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.apiKey !== 'YOUR_API_KEY');
+      
+      if (hasConfig) {
         setConnectionStatus('ok');
       } else {
         setConnectionStatus('error');
@@ -58,7 +61,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Services Not Ready",
-        description: "Firebase is still initializing. Please wait a moment."
+        description: "The archive connection is initializing. Please wait."
       });
       return;
     }
@@ -66,29 +69,29 @@ export default function LoginPage() {
     if (code.length !== 10) {
       toast({
         variant: "destructive",
-        title: "Invalid Format",
-        description: "Your access code must be exactly 10 digits."
+        title: "Invalid Protocol",
+        description: "Archival codes must be exactly 10 digits."
       });
       return;
     }
 
     setIsVerifying(true);
     try {
-      // 1. Verify code exists using public read
+      // 1. Verify code exists in the master registry
       const codeRef = doc(db, 'access_codes', code);
       const codeSnap = await getDoc(codeRef);
 
       if (!codeSnap.exists()) {
-        throw new Error(`The code [${code}] was not recognized by the archive.`);
+        throw new Error(`The archival code [${code}] was not found in the master registry.`);
       }
 
       const { role } = codeSnap.data();
 
-      // 2. Establish Secure Session via Anonymous Auth
+      // 2. Establish Secure Session
       const userCredential = await signInAnonymously(auth);
       const user = userCredential.user;
 
-      // 3. Link role to session
+      // 3. Link role to session profile
       await setDoc(doc(db, 'users', user.uid), {
         role,
         grantedAt: new Date().toISOString(),
@@ -97,26 +100,28 @@ export default function LoginPage() {
       }, { merge: true });
 
       toast({
-        title: "Protocol Accepted",
-        description: `Session initialized with ${role} clearance.`
+        title: "Access Granted",
+        description: `Protocol accepted. Clearance level: ${role.toUpperCase()}.`
       });
 
-      // Navigate after a short delay for state propagation
+      // Navigate after state propagates
       setTimeout(() => {
         router.push(role === 'librarian' ? '/librarian' : '/author');
-      }, 800);
+      }, 500);
       
     } catch (error: any) {
-      console.error('Login Error:', error);
+      console.error('Validation Error:', error);
       toast({
         variant: "destructive",
-        title: "Access Denied",
-        description: error.message || "Connection refused by host."
+        title: "Validation Failed",
+        description: error.message || "The repository denied your entry code."
       });
     } finally {
       setIsVerifying(false);
     }
   };
+
+  if (!isMounted) return null;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -128,20 +133,20 @@ export default function LoginPage() {
             {connectionStatus === 'offline' ? (
               <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3 text-destructive text-xs">
                 <WifiOff className="h-5 w-5 shrink-0" />
-                <p>Browser is offline. Please check your internet connection.</p>
+                <p>Host is unreachable. Check your network connection.</p>
               </div>
             ) : connectionStatus === 'error' ? (
               <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3 text-destructive text-xs">
                 <ShieldAlert className="h-5 w-5 shrink-0" />
                 <div className="space-y-1">
-                  <p className="font-bold">Invalid Configuration</p>
-                  <p>Environment variables are missing. Check Vercel project settings.</p>
+                  <p className="font-bold">Missing Archive Keys</p>
+                  <p>Environment variables are not configured in the host environment.</p>
                 </div>
               </div>
             ) : (
               <div className="p-3 bg-accent/5 border border-accent/20 rounded-lg flex items-center gap-3 text-accent text-[10px] uppercase tracking-widest font-bold">
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
-                <span>Encrypted Connection Established</span>
+                <span>Synchronized with Main Archive</span>
               </div>
             )}
           </div>
@@ -150,10 +155,10 @@ export default function LoginPage() {
             <CardHeader className="text-center">
               <CardTitle className="text-3xl font-headline flex items-center justify-center gap-2">
                 <Lock className="h-6 w-6 text-accent" />
-                Repository Entry
+                Internal Access
               </CardTitle>
               <CardDescription className="pt-2">
-                Enter your unique 10-digit archival code.
+                Provide your 10-digit archival entry code.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -183,7 +188,7 @@ export default function LoginPage() {
                   {isVerifying ? (
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   ) : null}
-                  {isVerifying ? "Verifying..." : "Validate Echo"}
+                  {isVerifying ? "Validating..." : "Execute Entry"}
                 </Button>
 
                 {connectionStatus !== 'ok' && (
@@ -192,7 +197,7 @@ export default function LoginPage() {
                     className="w-full text-xs text-muted-foreground"
                     onClick={() => window.location.reload()}
                   >
-                    <RefreshCcw className="h-3 w-3 mr-2" /> Retry Connection
+                    <RefreshCcw className="h-3 w-3 mr-2" /> Re-sync Connection
                   </Button>
                 )}
               </form>
@@ -201,7 +206,7 @@ export default function LoginPage() {
           
           <div className="text-center space-y-2">
             <p className="text-[9px] text-muted-foreground uppercase tracking-widest opacity-50">
-              System: Educational Experience Archive // Node: {hostname}
+              System: Educational Experience Archive // Node: {window.location.hostname}
             </p>
           </div>
         </div>

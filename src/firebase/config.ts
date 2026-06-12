@@ -1,5 +1,12 @@
+
+/**
+ * Firebase Configuration
+ * 
+ * Values are pulled from environment variables. 
+ * Ensure NEXT_PUBLIC_ prefixes are used for client-side access.
+ */
 export const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'YOUR_API_KEY',
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
@@ -8,3 +15,8 @@ export const firebaseConfig = {
   // The key Id for your sound bucket used for the podcast/RSS feed
   audioBucketId: process.env.NEXT_PUBLIC_AUDIO_BUCKET_ID || "0e61b06faeaf" 
 };
+
+// Validation for development debugging
+if (typeof window !== 'undefined' && !firebaseConfig.apiKey) {
+  console.warn("Firebase API Key is missing. Check your .env file or Vercel environment variables.");
+}
