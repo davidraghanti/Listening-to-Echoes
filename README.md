@@ -1,30 +1,31 @@
 
-# Listening to Echoes - Deployment Guide
+# 🔑 Unlocking the Archive: Step-by-Step Guide
 
-This project is a Next.js 15 application integrated with Firebase. It uses a custom 10-digit access code system for internal management.
+To make your secret 10-digit code work, you need to tell the "App's Brain" (Firebase) to allow anonymous visitors. Follow these simple steps:
 
-## 🔑 Initial Setup: Unlocking the Dashboard
+### 1. Enable Anonymous Auth (The "Secret Door")
+1. Open your **Firebase Console**.
+2. On the left side, look for the **person icon** that says **Authentication**. Click it.
+3. At the top, click the tab that says **Sign-in method**.
+4. Look down the list for **Anonymous**. 
+5. Click the little pencil ✏️ next to it.
+6. Flip the switch to **Enabled**.
+7. Click the blue **Save** button.
 
-Since the system uses Firestore to verify access codes, you must manually add your first code to the database to get started.
-
-### 1. Enable Anonymous Auth (CRITICAL)
-1. Go to the **Firebase Console**.
-2. Navigate to **Authentication > Sign-in method**.
-3. Click "Add new provider" and select **Anonymous**. 
-4. Click **Enable** and save. (The app will fail with "Access Denied" if this is skipped).
-
-### 2. Create the Access Code in Firestore
-1. Navigate to **Firestore Database** in the console.
+### 2. Create your Secret Code in the Database
+1. On the left side of the Firebase Console, click **Firestore Database**.
 2. Click **Start collection** and name it `access_codes`.
-3. **CRITICAL**: For the "Document ID", do **NOT** click "Auto-ID". Type your 10-digit code exactly: `3305021271`.
+3. **STOP!** When it asks for a "Document ID":
+    *   Do **NOT** click "Auto-ID".
+    *   Type your code exactly: `3305021271`.
 4. Add a field:
     *   **Field Name**: `role`
     *   **Type**: `string`
     *   **Value**: `librarian`
-5. Save the document.
+5. Click **Save**.
 
-### 3. Configure Vercel Environment Variables
-In your Vercel project settings, add the following keys from your Firebase Project Settings. If these are missing, the client will report as **offline** or show an **Invalid Configuration** error:
+### 3. Check your Vercel Settings
+Ensure these keys are in your Vercel project settings, or the app will say "Client is offline":
 - `NEXT_PUBLIC_FIREBASE_API_KEY`
 - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
 - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
@@ -33,8 +34,4 @@ In your Vercel project settings, add the following keys from your Firebase Proje
 - `NEXT_PUBLIC_FIREBASE_APP_ID`
 - `NEXT_PUBLIC_AUDIO_BUCKET_ID` (Default: `0e61b06faeaf`)
 
-## 🚀 Troubleshooting Connectivity
-If the app says "Client is offline":
-1. Verify that your **Vercel domains** are added to **Authentication > Settings > Authorized domains** in the Firebase Console.
-2. Ensure you have **Firestore Security Rules** deployed (they are included in this project).
-3. If using a VPN or strict firewall, ensure `firestore.googleapis.com` is accessible.
+Once these 3 parts are done, you can type your code into the login box and press **Execute Entry**!
