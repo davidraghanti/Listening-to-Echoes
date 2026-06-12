@@ -1,7 +1,19 @@
 
 # Listening to Echoes - Deployment Guide
 
-This project is a Next.js 15 application integrated with Firebase and Genkit.
+This project is a Next.js 15 application integrated with Firebase and Genkit. It uses a custom 10-digit access code system for internal repository management.
+
+## 🔑 Initial Setup: Unlocking the Librarian Dashboard
+
+Since the system uses Firestore to verify access codes, you must manually add your first code to the database to get started.
+
+1.  **Open Firebase Console**: Navigate to your project's **Firestore Database**.
+2.  **Create Collection**: Click "Start collection" and name it `access_codes`.
+3.  **Add Document**:
+    *   **Document ID**: `3305021271` (Your master code)
+    *   **Field**: `role` (string) = `librarian`
+    *   **Field**: `label` (string) = `Master Access`
+4.  **Login**: Go to `/login` on your deployed site and enter `3305021271`.
 
 ## 🚀 Getting Your Code to GitHub
 
@@ -22,28 +34,16 @@ git push -u origin main
 1. **Connect to Vercel**: Go to [Vercel Dashboard](https://vercel.com/new).
 2. **Import Repository**: Select `Listening-to-Echoes`.
 3. **CRITICAL: Configure Environment Variables**: 
-   In Vercel, go to **Settings > Environment Variables** and add the following keys from your Firebase project (found in Project Settings > General):
+   In Vercel, add the following keys from your Firebase project:
    - `NEXT_PUBLIC_FIREBASE_API_KEY`
    - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
    - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
    - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
    - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
    - `NEXT_PUBLIC_FIREBASE_APP_ID`
-   - `NEXT_PUBLIC_AUDIO_BUCKET_ID` (set this to `0e61b06faeaf`)
+   - `NEXT_PUBLIC_AUDIO_BUCKET_ID` (set to `0e61b06faeaf`)
 
-## 🔑 Fixing Google Sign-In (Popup Closing)
-
-If the Google Sign-in popup opens and closes instantly or reports an "Invalid API Key":
-
-1. **Verify Vercel Env Vars**: Double-check that `NEXT_PUBLIC_FIREBASE_API_KEY` in Vercel matches exactly the one in your Firebase Console.
-2. **Whitelist your Domain**: 
-   - Go to the [Firebase Console](https://console.firebase.google.com/).
-   - Navigate to **Authentication > Settings > Authorized domains**.
-   - Add your Vercel deployment URL (e.g., `listening-to-echoes.vercel.app`).
-3. **Enable Provider**:
-   - In **Authentication > Sign-in method**, ensure **Google** is enabled.
-
-## 📂 Firestore Setup
-1. **Enable Firestore**: In the Firebase Console, create a database in "Production Mode".
-2. **Rules**: The security rules are already in `firestore.rules`.
-3. **Indexes**: If the Librarian queue is empty, check the browser console (`F12`) for a link to generate the required composite index.
+## 📂 Firestore Security & Indexes
+1. **Enable Firestore**: Create database in "Production Mode".
+2. **Rules**: Security rules are in `firestore.rules`.
+3. **Indexes**: The Librarian queue requires a composite index. Check the browser console (`F12`) on the `/librarian` page for a link to generate it if the queue doesn't load.

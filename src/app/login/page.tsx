@@ -7,7 +7,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { useAuth, useFirestore, useUser } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 import { signInAnonymously } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Lock, Loader2, Key } from 'lucide-react';
@@ -23,7 +23,14 @@ export default function LoginPage() {
 
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth || !db) return;
+    if (!auth || !db) {
+      toast({
+        variant: "destructive",
+        title: "Connection Error",
+        description: "Unable to connect to the archival database. Check your connection."
+      });
+      return;
+    }
 
     if (code.length !== 10) {
       toast({
@@ -54,15 +61,20 @@ export default function LoginPage() {
       await setDoc(doc(db, 'users', user.uid), {
         role,
         grantedAt: new Date().toISOString(),
-        codeUsed: code
+        codeUsed: code,
+        email: `anonymous-${user.uid.substring(0, 5)}@listeningtoechoes.internal`
       }, { merge: true });
 
       toast({
         title: "Access Granted",
-        description: `Welcome. You have been authenticated as a ${role}.`
+        description: `Welcome. Authenticated as ${role}.`
       });
 
-      router.push(role === 'librarian' ? '/librarian' : '/author');
+      // Force a small delay to ensure profile listener in useUser can catch the update
+      setTimeout(() => {
+        router.push(role === 'librarian' ? '/librarian' : '/author');
+      }, 500);
+      
     } catch (error: any) {
       console.error('Login failed', error);
       toast({
@@ -96,6 +108,7 @@ export default function LoginPage() {
                   <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
                     type="text"
+                    inputMode="numeric"
                     maxLength={10}
                     placeholder="0000000000"
                     value={code}
@@ -104,7 +117,7 @@ export default function LoginPage() {
                   />
                 </div>
                 <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest">
-                  Archival codes are managed by the repository lead.
+                  Master codes are required for internal repository management.
                 </p>
               </div>
 
