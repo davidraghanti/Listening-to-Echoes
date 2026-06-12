@@ -24,14 +24,15 @@ To make your secret 10-digit code work, you need to tell the "App's Brain" (Fire
     *   **Value**: `librarian`
 5. Click **Save**.
 
-### 3. Check your Vercel Settings
-Ensure these keys are in your Vercel project settings, or the app will say "Client is offline":
-- `NEXT_PUBLIC_FIREBASE_API_KEY`
-- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-- `NEXT_PUBLIC_FIREBASE_APP_ID`
-- `NEXT_PUBLIC_AUDIO_BUCKET_ID` (Default: `0e61b06faeaf`)
+### 3. Check your Vercel Settings (CRITICAL)
+If the app says "Client is Offline" or "Missing Credentials", it means Vercel doesn't know how to talk to your database. You must add these keys in your **Vercel Project Settings**:
 
-Once these 3 parts are done, you can type your code into the login box and press **Execute Entry**!
+*   `NEXT_PUBLIC_FIREBASE_API_KEY`
+*   `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+*   `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+*   `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+*   `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+*   `NEXT_PUBLIC_FIREBASE_APP_ID`
+*   `NEXT_PUBLIC_AUDIO_BUCKET_ID` (Default: `0e61b06faeaf`)
+
+**IMPORTANT:** After adding these, you must trigger a **Redeploy** on Vercel for the changes to work.

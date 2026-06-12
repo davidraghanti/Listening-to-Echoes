@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { signInAnonymously } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { Lock, Loader2, Key, CheckCircle2, ShieldAlert, WifiOff, RefreshCcw } from 'lucide-react';
+import { Lock, Loader2, Key, CheckCircle2, ShieldAlert, WifiOff, RefreshCcw, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { firebaseConfig } from '@/firebase/config';
 
@@ -18,6 +18,7 @@ export default function LoginPage() {
   const [code, setCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'ok' | 'error' | 'offline'>('checking');
+  const [configErrors, setConfigErrors] = useState<string[]>([]);
   const [isMounted, setIsMounted] = useState(false);
   
   const auth = useAuth();
@@ -29,23 +30,23 @@ export default function LoginPage() {
     setIsMounted(true);
 
     const checkConnectivity = () => {
-      if (!navigator.onLine) {
+      const errors: string[] = [];
+      
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
         setConnectionStatus('offline');
         return;
       }
 
-      // Check if essential config exists and isn't a placeholder
-      const hasConfig = !!(
-        firebaseConfig.apiKey && 
-        firebaseConfig.projectId && 
-        firebaseConfig.apiKey !== 'YOUR_API_KEY' &&
-        !firebaseConfig.apiKey.includes('placeholder')
-      );
-      
-      if (hasConfig) {
-        setConnectionStatus('ok');
-      } else {
+      // Check for specific missing keys
+      if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'YOUR_API_KEY') errors.push('API Key (NEXT_PUBLIC_FIREBASE_API_KEY)');
+      if (!firebaseConfig.projectId) errors.push('Project ID (NEXT_PUBLIC_FIREBASE_PROJECT_ID)');
+      if (!firebaseConfig.appId) errors.push('App ID (NEXT_PUBLIC_FIREBASE_APP_ID)');
+
+      if (errors.length > 0) {
+        setConfigErrors(errors);
         setConnectionStatus('error');
+      } else {
+        setConnectionStatus('ok');
       }
     };
 
@@ -65,8 +66,8 @@ export default function LoginPage() {
     if (!auth || !db) {
       toast({
         variant: "destructive",
-        title: "Archive Connection Refused",
-        description: "Verify that your Vercel Environment Variables are set correctly."
+        title: "Connection Error",
+        description: "Firebase services failed to initialize. Please check your console."
       });
       return;
     }
@@ -75,7 +76,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Protocol Error",
-        description: "Entry codes must be exactly 10 digits."
+        description: "Archival codes must be exactly 10 digits."
       });
       return;
     }
@@ -87,7 +88,7 @@ export default function LoginPage() {
       const codeSnap = await getDoc(codeRef);
 
       if (!codeSnap.exists()) {
-        throw new Error(`The entry code [${code}] was not found in the master registry.`);
+        throw new Error(`The entry code [${code}] was not found in the archive registry.`);
       }
 
       const { role } = codeSnap.data();
@@ -109,17 +110,17 @@ export default function LoginPage() {
         description: `Clearance level [${role.toUpperCase()}] established.`
       });
 
-      // Redirect based on role
+      // Wait a tiny bit for the write to propagate before redirecting
       setTimeout(() => {
         router.push(role === 'librarian' ? '/librarian' : '/author');
-      }, 800);
+      }, 1000);
       
     } catch (error: any) {
       console.error('Validation Error:', error);
       toast({
         variant: "destructive",
         title: "Validation Failed",
-        description: error.message || "Access denied by the repository security rules."
+        description: error.message || "Security rules denied access."
       });
     } finally {
       setIsVerifying(false);
@@ -138,20 +139,28 @@ export default function LoginPage() {
             {connectionStatus === 'offline' ? (
               <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3 text-destructive text-xs">
                 <WifiOff className="h-5 w-5 shrink-0" />
-                <p>Network Unreachable. Check your connection.</p>
+                <p>Internet Unreachable. Check your connection.</p>
               </div>
             ) : connectionStatus === 'error' ? (
-              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3 text-destructive text-xs">
+              <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center gap-3 text-amber-500 text-xs">
                 <ShieldAlert className="h-5 w-5 shrink-0" />
                 <div className="space-y-1">
-                  <p className="font-bold">Missing Archive Credentials</p>
-                  <p>Check Vercel environment variables for NEXT_PUBLIC_FIREBASE_API_KEY.</p>
+                  <p className="font-bold uppercase tracking-wider">Archive Connection Issue</p>
+                  <p>The following keys are missing in Vercel:</p>
+                  <ul className="list-disc list-inside mt-1 font-mono">
+                    {configErrors.map((err, i) => <li key={i}>{err}</li>)}
+                  </ul>
                 </div>
               </div>
-            ) : (
+            ) : connectionStatus === 'ok' ? (
               <div className="p-3 bg-accent/5 border border-accent/20 rounded-lg flex items-center gap-3 text-accent text-[10px] uppercase tracking-widest font-bold">
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
-                <span>Synchronized with Main Archive</span>
+                <span>Secure Connection Established</span>
+              </div>
+            ) : (
+              <div className="p-3 bg-muted/20 border border-muted rounded-lg flex items-center gap-3 text-muted-foreground text-[10px] uppercase tracking-widest">
+                <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                <span>Verifying Repository Node...</span>
               </div>
             )}
           </div>
@@ -180,7 +189,7 @@ export default function LoginPage() {
                       onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
                       className="pl-10 h-14 bg-muted/20 border-muted text-center text-2xl tracking-[0.5em] font-mono focus:ring-accent"
                       autoFocus
-                      disabled={connectionStatus === 'offline' || connectionStatus === 'error'}
+                      disabled={connectionStatus === 'offline' || connectionStatus === 'error' || isVerifying}
                     />
                   </div>
                 </div>
@@ -193,25 +202,25 @@ export default function LoginPage() {
                   {isVerifying ? (
                     <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   ) : null}
-                  {isVerifying ? "Verifying Protocol..." : "Execute Entry"}
+                  {isVerifying ? "Archiving Clearance..." : "Execute Entry"}
                 </Button>
 
-                {connectionStatus !== 'ok' && (
+                {connectionStatus !== 'ok' && connectionStatus !== 'checking' && (
                   <Button 
                     variant="ghost" 
                     className="w-full text-xs text-muted-foreground"
                     onClick={() => window.location.reload()}
                   >
-                    <RefreshCcw className="h-3 w-3 mr-2" /> Re-sync Connection
+                    <RefreshCcw className="h-3 w-3 mr-2" /> Attempt Re-sync
                   </Button>
                 )}
               </form>
             </CardContent>
           </Card>
           
-          <div className="text-center space-y-2">
-            <p className="text-[9px] text-muted-foreground uppercase tracking-widest opacity-50">
-              System: Educational Experience Archive // Node: {isMounted ? window.location.hostname : 'archive'}
+          <div className="text-center">
+            <p className="text-[9px] text-muted-foreground uppercase tracking-widest opacity-50 font-mono">
+              System: Educational Experience Archive // Node: {typeof window !== 'undefined' ? window.location.hostname : 'archive'}
             </p>
           </div>
         </div>
