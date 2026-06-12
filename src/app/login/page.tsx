@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { signInAnonymously } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { Lock, Loader2, Key, CheckCircle2, ShieldAlert, WifiOff, RefreshCcw, AlertTriangle } from 'lucide-react';
+import { Lock, Loader2, Key, CheckCircle2, ShieldAlert, WifiOff, RefreshCcw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { firebaseConfig } from '@/firebase/config';
 
@@ -37,10 +37,10 @@ export default function LoginPage() {
         return;
       }
 
-      // Check for specific missing keys
-      if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'YOUR_API_KEY') errors.push('API Key (NEXT_PUBLIC_FIREBASE_API_KEY)');
-      if (!firebaseConfig.projectId) errors.push('Project ID (NEXT_PUBLIC_FIREBASE_PROJECT_ID)');
-      if (!firebaseConfig.appId) errors.push('App ID (NEXT_PUBLIC_FIREBASE_APP_ID)');
+      // Check for specific missing keys in the config
+      if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'YOUR_API_KEY') errors.push('API Key');
+      if (!firebaseConfig.projectId) errors.push('Project ID');
+      if (!firebaseConfig.appId) errors.push('App ID');
 
       if (errors.length > 0) {
         setConfigErrors(errors);
@@ -66,8 +66,8 @@ export default function LoginPage() {
     if (!auth || !db) {
       toast({
         variant: "destructive",
-        title: "Connection Error",
-        description: "Firebase services failed to initialize. Please check your console."
+        title: "Initialization Error",
+        description: "Firebase services failed to initialize. Please check your Vercel Environment Variables."
       });
       return;
     }
@@ -88,7 +88,7 @@ export default function LoginPage() {
       const codeSnap = await getDoc(codeRef);
 
       if (!codeSnap.exists()) {
-        throw new Error(`The entry code [${code}] was not found in the archive registry.`);
+        throw new Error(`Entry code [${code}] not recognized by the repository.`);
       }
 
       const { role } = codeSnap.data();
@@ -110,7 +110,7 @@ export default function LoginPage() {
         description: `Clearance level [${role.toUpperCase()}] established.`
       });
 
-      // Wait a tiny bit for the write to propagate before redirecting
+      // Wait for propagation then redirect
       setTimeout(() => {
         router.push(role === 'librarian' ? '/librarian' : '/author');
       }, 1000);
@@ -120,7 +120,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Validation Failed",
-        description: error.message || "Security rules denied access."
+        description: error.message || "Security rules denied access. Ensure Anonymous Auth is enabled."
       });
     } finally {
       setIsVerifying(false);
@@ -146,7 +146,7 @@ export default function LoginPage() {
                 <ShieldAlert className="h-5 w-5 shrink-0" />
                 <div className="space-y-1">
                   <p className="font-bold uppercase tracking-wider">Archive Connection Issue</p>
-                  <p>The following keys are missing in Vercel:</p>
+                  <p>Check Vercel Environment Variables for:</p>
                   <ul className="list-disc list-inside mt-1 font-mono">
                     {configErrors.map((err, i) => <li key={i}>{err}</li>)}
                   </ul>
@@ -220,7 +220,7 @@ export default function LoginPage() {
           
           <div className="text-center">
             <p className="text-[9px] text-muted-foreground uppercase tracking-widest opacity-50 font-mono">
-              System: Educational Experience Archive // Node: {typeof window !== 'undefined' ? window.location.hostname : 'archive'}
+              System: Educational Experience Archive // Node: {isMounted ? window.location.hostname : 'archive'}
             </p>
           </div>
         </div>
