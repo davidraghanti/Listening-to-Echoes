@@ -1,67 +1,50 @@
 
 # Listening to Echoes - Deployment Guide
 
-This project is a Next.js 15 application integrated with Firebase and Genkit. You can deploy it to **Vercel** or **Firebase**.
+This project is a Next.js 15 application integrated with Firebase and Genkit.
 
-## Getting Your Code to GitHub
+## 🚀 Getting Your Code to GitHub
 
-1. **Create a Repository**: You have already created one at `https://github.com/davidraghanti/Listening-to-Echoes.git`.
+1. **Create a Repository**: Ensure it is created at `https://github.com/davidraghanti/Listening-to-Echoes.git`.
 2. **Run these commands in your terminal**:
 
 ```bash
-# Initialize git
 git init
-
-# Add all files
 git add .
-
-# Commit changes
 git commit -m "Initial commit: Educational Experience Archive"
-
-# Set the main branch
 git branch -M main
-
-# Add your GitHub repository as the remote
 git remote add origin https://github.com/davidraghanti/Listening-to-Echoes.git
-
-# Push the code
 git push -u origin main
 ```
 
-## Option 1: Deploying to Vercel (Recommended for Next.js)
+## 🌐 Option 1: Deploying to Vercel (Recommended)
 
 1. **Connect to Vercel**: Go to [Vercel Dashboard](https://vercel.com/new).
-2. **Import Repository**: Select the `Listening-to-Echoes` repository.
-3. **Configure Environment Variables**: Add your Firebase keys (found in `src/firebase/config.ts`) as Environment Variables in Vercel.
-4. **Deploy**: Click "Deploy".
+2. **Import Repository**: Select `Listening-to-Echoes`.
+3. **CRITICAL: Configure Environment Variables**: 
+   In Vercel, go to **Settings > Environment Variables** and add the following keys from your Firebase project:
+   - `NEXT_PUBLIC_FIREBASE_API_KEY`
+   - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+   - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+   - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+   - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+   - `NEXT_PUBLIC_FIREBASE_APP_ID`
+   - `NEXT_PUBLIC_AUDIO_BUCKET_ID` (use `0e61b06faeaf`)
 
-## Option 2: Deploying to Firebase Hosting
+## 🔑 Fixing Google Sign-In (Popup Closing)
 
-Since this is a Next.js app, we use the Firebase CLI's web framework support.
+If the Google Sign-in popup opens and closes instantly, follow these steps:
 
-1. **Login to Firebase**:
-   ```bash
-   firebase login
-   ```
-2. **Enable Web Frameworks** (if not already enabled):
-   ```bash
-   firebase experiments:enable webframeworks
-   ```
-3. **Deploy**:
-   ```bash
-   firebase deploy
-   ```
+1. **Whitelist your Domain**: 
+   - Go to the [Firebase Console](https://console.firebase.google.com/).
+   - Navigate to **Authentication > Settings > Authorized domains**.
+   - Add your Vercel deployment URL (e.g., `listening-to-echoes.vercel.app`).
+2. **Verify API Key**:
+   - Ensure the `NEXT_PUBLIC_FIREBASE_API_KEY` in Vercel matches exactly the one in your Firebase Project settings.
+3. **Enable Provider**:
+   - In **Authentication > Sign-in method**, ensure **Google** is enabled.
 
-## Option 3: Firebase App Hosting (Automated)
-
-1. Go to the [Firebase Console](https://console.firebase.google.com/).
-2. Select **App Hosting** from the left menu.
-3. Click **Get Started** and connect your GitHub repository.
-4. Firebase will automatically build and deploy your app every time you push to `main`.
-
-## Local Development
-
-```bash
-npm install
-npm run dev
-```
+## 📂 Firestore Setup
+1. **Enable Firestore**: In the Firebase Console, create a database in "Production Mode".
+2. **Rules**: The security rules are already in `firestore.rules`.
+3. **Indexes**: If the Librarian queue is empty, check the browser console (`F12`) for a link to generate the required composite index.
