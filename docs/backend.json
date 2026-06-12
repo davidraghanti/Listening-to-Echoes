@@ -25,20 +25,10 @@
         "email": { "type": "string" },
         "role": { "type": "string", "enum": ["user", "librarian", "author"] }
       }
-    },
-    "AccessCode": {
-      "title": "Access Code",
-      "description": "A 10-digit code that grants a specific internal role.",
-      "type": "object",
-      "properties": {
-        "role": { "type": "string", "enum": ["librarian", "author"] },
-        "label": { "type": "string", "description": "Who this code is for." }
-      },
-      "required": ["role"]
     }
   },
   "auth": {
-    "providers": ["anonymous"]
+    "providers": ["google"]
   },
   "firestore": {
     "/stories/{storyId}": {
@@ -48,10 +38,6 @@
     "/users/{userId}": {
       "schema": "UserProfile",
       "description": "User profiles and permissions."
-    },
-    "/access_codes/{codeId}": {
-      "schema": "AccessCode",
-      "description": "Stored 10-digit codes for internal access."
     }
   }
 }
