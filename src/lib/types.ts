@@ -10,6 +10,7 @@ export interface Story {
   audioUrl?: string;
   tags: string[];
   piiDetected?: boolean;
+  tone: number; // 0 to 100 scale for visual/audio modulation
 }
 
 export interface ArchivePost {

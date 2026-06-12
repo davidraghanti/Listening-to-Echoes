@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, ShieldCheck, Tag, Check, X, Sparkles, UserRound, MapPin, Calendar, Lock, Loader2, Info, Mic } from 'lucide-react';
+import { AlertCircle, ShieldCheck, Tag, Check, X, Sparkles, UserRound, MapPin, Calendar, Lock, Loader2, Info, Mic, AlertTriangle } from 'lucide-react';
 import { detectPiiInStory, LibrarianPiiDetectionOutput } from '@/ai/flows/librarian-pii-detection';
 import { librarianAutomatedTaggingAndTrends, LibrarianAutomatedTaggingAndTrendsOutput } from '@/ai/flows/librarian-automated-tagging-and-trends-flow';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -43,7 +43,7 @@ export default function LibrarianDashboard() {
     );
   }, [db]);
 
-  const { data: pendingStories, loading: storiesLoading } = useCollection<Story>(pendingQuery);
+  const { data: pendingStories, loading: storiesLoading, error: storiesError } = useCollection<Story>(pendingQuery);
   const activeStory = pendingStories?.find(s => s.id === selectedStoryId);
 
   useEffect(() => {
@@ -153,7 +153,18 @@ export default function LibrarianDashboard() {
             <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
               <ShieldCheck className="h-4 w-4" /> Queue
             </h2>
-            {storiesLoading ? (
+            
+            {storiesError ? (
+              <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive space-y-2">
+                <div className="flex items-center gap-2 font-bold">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span>Queue Error</span>
+                </div>
+                <p className="text-xs leading-relaxed">
+                  This query requires a composite index. Check the browser console for the direct link to create it in the Firebase Console.
+                </p>
+              </div>
+            ) : storiesLoading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-accent" />
               </div>
