@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -9,12 +8,11 @@ import { useAuth, useFirestore } from '../provider';
 export interface UserProfile {
   role?: 'user' | 'librarian' | 'author';
   email?: string;
-  linkedAt?: string;
+  grantedAt?: string;
 }
 
 /**
  * Hook to manage the current user state and their Firestore profile.
- * Now optimized for anonymous sessions tied to access codes.
  */
 export function useUser() {
   const auth = useAuth();
@@ -43,12 +41,12 @@ export function useUser() {
 
     const userDocRef = doc(db, 'users', user.uid);
     
-    // Listen to the user's profile document
+    setLoading(true);
     const unsubscribe = onSnapshot(userDocRef, (snapshot) => {
       if (snapshot.exists()) {
         setProfile(snapshot.data() as UserProfile);
       } else {
-        // Default to guest/standard user if no profile exists yet
+        // Only set default if we're sure the user is signed in but has no doc
         setProfile({ role: 'user' });
       }
       setLoading(false);

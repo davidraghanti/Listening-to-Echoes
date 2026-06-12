@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { useAuth, useFirestore } from '@/firebase';
 import { signInAnonymously } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { Lock, Loader2, Key, AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { Lock, Loader2, Key, CheckCircle2, ShieldAlert } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { firebaseConfig } from '@/firebase/config';
 import Link from 'next/link';
@@ -25,7 +25,6 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check if critical config is present
     if (firebaseConfig.apiKey && firebaseConfig.projectId) {
       setConnectionStatus('ok');
     } else {
@@ -40,7 +39,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Initialization Pending",
-        description: "Firebase services are still connecting. Please wait a few seconds and try again."
+        description: "Firebase services are still connecting. Please try again."
       });
       return;
     }
@@ -58,30 +57,19 @@ export default function LoginPage() {
     try {
       // 1. Verify code exists using public read
       const codeRef = doc(db, 'access_codes', code);
-      const codeSnap = await getDoc(codeRef).catch(err => {
-        if (err.message.includes('permission-denied')) {
-          throw new Error("Security Rules Denied Access. Ensure rules are deployed and 'access_codes' is readable.");
-        }
-        throw err;
-      });
+      const codeSnap = await getDoc(codeRef);
 
       if (!codeSnap.exists()) {
-        throw new Error(`Code [${code}] not found. Ensure the Document ID in your 'access_codes' collection matches this code exactly.`);
+        throw new Error(`Code [${code}] not found in database.`);
       }
 
       const { role } = codeSnap.data();
 
       // 2. Establish Secure Session via Anonymous Auth
-      const userCredential = await signInAnonymously(auth).catch(err => {
-        if (err.code === 'auth/operation-not-allowed') {
-          throw new Error("Anonymous Sign-In is DISABLED in Firebase Console. Please enable it under Authentication > Sign-in method.");
-        }
-        throw err;
-      });
-
+      const userCredential = await signInAnonymously(auth);
       const user = userCredential.user;
 
-      // 3. Link role to session
+      // 3. Link role to session - Await the write to ensure it's in the DB before navigating
       await setDoc(doc(db, 'users', user.uid), {
         role,
         grantedAt: new Date().toISOString(),
@@ -91,17 +79,20 @@ export default function LoginPage() {
 
       toast({
         title: "Access Granted",
-        description: `Archivist session initialized as: ${role}.`
+        description: `Session initialized as: ${role}.`
       });
 
-      router.push(role === 'librarian' ? '/librarian' : '/author');
+      // Small delay to ensure Firestore listeners catch the profile update
+      setTimeout(() => {
+        router.push(role === 'librarian' ? '/librarian' : '/author');
+      }, 500);
       
     } catch (error: any) {
       console.error('Login Verification Error:', error);
       toast({
         variant: "destructive",
         title: "Access Denied",
-        description: error.message || "An unexpected error occurred during authentication."
+        description: error.message || "An unexpected error occurred."
       });
     } finally {
       setIsVerifying(false);
@@ -114,7 +105,6 @@ export default function LoginPage() {
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="max-w-md w-full space-y-4">
           
-          {/* Diagnostic Overlay */}
           <div className="space-y-2">
             {connectionStatus === 'error' ? (
               <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3 text-destructive text-xs">
@@ -155,11 +145,6 @@ export default function LoginPage() {
                       autoFocus
                     />
                   </div>
-                  <div className="flex justify-center">
-                    <div className="text-[10px] bg-muted/30 px-3 py-1 rounded-full text-muted-foreground uppercase tracking-widest">
-                      Protocol: Anonymous-AES-256
-                    </div>
-                  </div>
                 </div>
 
                 <Button 
@@ -180,10 +165,6 @@ export default function LoginPage() {
             <p className="text-[9px] text-muted-foreground uppercase tracking-widest opacity-50">
               System: Educational Experience Archive // Internal Node 01
             </p>
-            <div className="flex justify-center gap-4">
-              <Link href="/about" className="text-[8px] text-accent hover:underline uppercase tracking-tighter">Support</Link>
-              <Link href="/submit" className="text-[8px] text-accent hover:underline uppercase tracking-tighter">Request Code</Link>
-            </div>
           </div>
         </div>
       </main>
