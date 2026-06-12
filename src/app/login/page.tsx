@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [code, setCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'ok' | 'error' | 'offline'>('checking');
+  const [hostname, setHostname] = useState('archive');
   
   const auth = useAuth();
   const db = useFirestore();
@@ -24,6 +25,9 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   useEffect(() => {
+    // Prevent hydration mismatch by setting hostname after mount
+    setHostname(window.location.hostname);
+
     const checkConnectivity = () => {
       if (!navigator.onLine) {
         setConnectionStatus('offline');
@@ -197,7 +201,7 @@ export default function LoginPage() {
           
           <div className="text-center space-y-2">
             <p className="text-[9px] text-muted-foreground uppercase tracking-widest opacity-50">
-              System: Educational Experience Archive // Node: {typeof window !== 'undefined' ? window.location.hostname : 'archive'}
+              System: Educational Experience Archive // Node: {hostname}
             </p>
           </div>
         </div>
