@@ -3,16 +3,17 @@
 
 Follow these steps to unlock the repository and manage your archival broadcast.
 
-### ⚠️ IMPORTANT: Terminal Usage
-The commands below MUST be typed into the **Terminal** tab at the bottom of your editor window (next to "Console" or "Output"). **Do NOT** type these into the browser console or into a code file.
+### 📍 Where is the Terminal?
+Look at the **very bottom** of this screen. You will see a small tab labeled **"Terminal"** (it's usually right next to "Console" or "Output"). 
+
+**DO NOT** type these into the "Console" tab or the browser.
 
 ### 1. Update GitHub & Deploy
-To push these code fixes to your site:
-1. Click the **Terminal** tab in your editor.
-2. Run these three commands in order (press Enter after each):
-   - `git add .`
-   - `git commit -m "Fix hydration and diagnostic tools"`
-   - `git push origin main`
+Once you find the **Terminal**, type these three commands in order (press Enter after each):
+
+1. `git add .`
+2. `git commit -m "Fixing connection and entry logic"`
+3. `git push origin main`
 
 *Vercel will automatically see this push and start building your live site.*
 
@@ -41,6 +42,6 @@ If you get "Request Action is Invalid" or "Operation Not Allowed":
 ### 4. Grant Librarian Role
 1. Open your app and click **Internal** to sign in with your Google account.
 2. Once signed in, go to **Firebase Console** > **Firestore Database**.
-3. Locate the `users` collection and find your user document (it will have your email).
+3. Locate the `users` collection and find your user document.
 4. Change the `role` field from `"user"` to `"librarian"`.
 5. Refresh the app to see the **Review** tools in the navbar.

@@ -18,7 +18,6 @@ export default function LoginPage() {
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'ok' | 'error' | 'offline'>('checking');
   const [configErrors, setConfigErrors] = useState<string[]>([]);
   const [isMounted, setIsMounted] = useState(false);
-  const [displayHostname, setDisplayHostname] = useState('archive');
   
   const auth = useAuth();
   const db = useFirestore();
@@ -28,9 +27,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     setIsMounted(true);
-    if (typeof window !== 'undefined') {
-      setDisplayHostname(window.location.hostname);
-    }
 
     const checkConnectivity = () => {
       const errors: string[] = [];
@@ -42,9 +38,9 @@ export default function LoginPage() {
 
       // Diagnostic check for environment variables
       const keys = [
-        { name: 'NEXT_PUBLIC_FIREBASE_API_KEY', value: firebaseConfig.apiKey },
-        { name: 'NEXT_PUBLIC_FIREBASE_PROJECT_ID', value: firebaseConfig.projectId },
-        { name: 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN', value: firebaseConfig.authDomain }
+        { name: 'API_KEY', value: firebaseConfig.apiKey },
+        { name: 'PROJECT_ID', value: firebaseConfig.projectId },
+        { name: 'AUTH_DOMAIN', value: firebaseConfig.authDomain }
       ];
 
       keys.forEach(k => {
@@ -92,7 +88,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "System Not Ready",
-        description: "Firebase is still initializing. Please refresh in a moment."
+        description: "Firebase is still initializing. Please wait 5 seconds and try again."
       });
       return;
     }
@@ -116,8 +112,8 @@ export default function LoginPage() {
         });
         
         toast({
-          title: "Initial Entry Recorded",
-          description: "Sign-in successful. Contact the admin to grant Librarian role."
+          title: "Entry Successful",
+          description: "Sign-in successful. Check README.md step #4 to unlock Librarian role."
         });
         router.push('/');
       } else {
@@ -136,8 +132,8 @@ export default function LoginPage() {
       console.error('Login Error:', error);
       
       let errorMsg = error.message;
-      if (error.code === 'auth/api-key-not-valid') {
-        errorMsg = "The API Key in your Vercel Environment Variables is invalid or missing.";
+      if (error.code === 'auth/api-key-not-valid' || error.code === 'auth/invalid-api-key') {
+        errorMsg = "The API Key in your Vercel Environment Variables is invalid.";
       } else if (error.code === 'auth/operation-not-allowed') {
         errorMsg = "Google login is not enabled in your Firebase Console (Authentication tab).";
       }
@@ -179,14 +175,14 @@ export default function LoginPage() {
               <div className="p-5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col gap-3 text-amber-500">
                 <div className="flex items-center gap-2">
                   <ShieldAlert className="h-5 w-5 shrink-0" />
-                  <p className="font-bold uppercase tracking-wider text-[10px]">Action Required: Vercel Setup</p>
+                  <p className="font-bold uppercase tracking-wider text-[10px]">Vercel Setup Needed</p>
                 </div>
                 <div className="space-y-3">
-                  <p className="text-xs leading-relaxed">The app is missing its connection keys. You must add these to your <strong>Vercel Project Settings</strong>:</p>
+                  <p className="text-xs leading-relaxed">The following keys are missing from your <strong>Vercel Project Settings</strong>:</p>
                   <ul className="grid gap-1 font-mono text-[9px] bg-black/20 p-2 rounded">
-                    {configErrors.map((err, i) => <li key={i} className="flex items-center gap-2">• {err}</li>)}
+                    {configErrors.map((err, i) => <li key={i} className="flex items-center gap-2">• NEXT_PUBLIC_FIREBASE_{err}</li>)}
                   </ul>
-                  <p className="text-[10px] italic">After adding keys in Vercel, you must <strong>Redeploy</strong> for them to take effect.</p>
+                  <p className="text-[10px] italic">After adding them, you must <strong>Redeploy</strong> in Vercel.</p>
                 </div>
               </div>
             ) : (
@@ -204,7 +200,7 @@ export default function LoginPage() {
                 Internal Entry
               </CardTitle>
               <CardDescription className="pt-2">
-                Authorized access for repository staff.
+                Sign in with Google to access review tools.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -223,7 +219,7 @@ export default function LoginPage() {
 
               <div className="pt-4 border-t border-muted/30">
                 <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest leading-relaxed">
-                  Clearance level required: LIBRARIAN
+                  Librarian Clearance Required
                 </p>
               </div>
 
@@ -232,11 +228,8 @@ export default function LoginPage() {
                   <div className="flex gap-3">
                     <Terminal className="h-4 w-4 text-accent shrink-0" />
                     <p className="text-[10px] text-muted-foreground leading-relaxed">
-                      Terminal commands for GitHub update are in the README. 
+                      Terminal instructions are in the README. 
                     </p>
-                  </div>
-                  <div className="p-2 bg-black/20 rounded font-mono text-[9px] text-amber-200">
-                    Error: auth/api-key-not-valid
                   </div>
                 </div>
               )}
@@ -245,7 +238,7 @@ export default function LoginPage() {
 
           <div className="text-center space-y-2">
             <p className="text-[9px] text-muted-foreground uppercase tracking-widest opacity-50">
-              System: Educational Experience Archive // Node: {displayHostname}
+              System: Educational Experience Archive
             </p>
           </div>
         </div>
