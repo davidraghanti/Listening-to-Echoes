@@ -9,7 +9,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { LogIn, Loader2, CheckCircle2, ShieldAlert, WifiOff, RefreshCcw, Terminal } from 'lucide-react';
+import { LogIn, Loader2, CheckCircle2, ShieldAlert, WifiOff, RefreshCcw, Terminal, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { firebaseConfig } from '@/firebase/config';
 
@@ -36,12 +36,15 @@ export default function LoginPage() {
         return;
       }
 
-      // Explicit check for missing or placeholder keys
-      if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'undefined' || firebaseConfig.apiKey.length < 10) {
+      // Check for missing or literal 'undefined' string values from env
+      if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'undefined') {
         errors.push('NEXT_PUBLIC_FIREBASE_API_KEY');
       }
       if (!firebaseConfig.projectId || firebaseConfig.projectId === 'undefined') {
         errors.push('NEXT_PUBLIC_FIREBASE_PROJECT_ID');
+      }
+      if (!firebaseConfig.authDomain || firebaseConfig.authDomain === 'undefined') {
+        errors.push('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN');
       }
 
       if (errors.length > 0) {
@@ -70,14 +73,16 @@ export default function LoginPage() {
   }, [user, profile, router]);
 
   const handleGoogleLogin = async () => {
-    if (!auth || !db) {
+    if (connectionStatus !== 'ok') {
       toast({
         variant: "destructive",
         title: "Configuration Error",
-        description: "Firebase keys are missing. Please add them to your Vercel project settings."
+        description: "Your Firebase keys are missing. Please add them to Vercel Project Settings."
       });
       return;
     }
+
+    if (!auth || !db) return;
 
     setIsVerifying(true);
     try {
@@ -99,7 +104,7 @@ export default function LoginPage() {
         
         toast({
           title: "Initial Entry Recorded",
-          description: "Sign-in successful. To access Librarian tools, manually update your role in Firestore."
+          description: "Sign-in successful. Contact the admin to grant Librarian role."
         });
         router.push('/');
       } else {
@@ -119,11 +124,9 @@ export default function LoginPage() {
       
       let errorMsg = error.message;
       if (error.code === 'auth/api-key-not-valid') {
-        errorMsg = "The API Key provided is invalid. Please check your Vercel Environment Variables.";
+        errorMsg = "The API Key in your Vercel Environment Variables is invalid or missing.";
       } else if (error.code === 'auth/operation-not-allowed') {
-        errorMsg = "Google Provider is not enabled in Firebase Console > Authentication.";
-      } else if (error.code === 'auth/unauthorized-domain') {
-        errorMsg = "This domain (Vercel URL) is not added to Authorized Domains in Firebase.";
+        errorMsg = "Google login is not enabled in your Firebase Console.";
       }
 
       toast({
@@ -154,20 +157,20 @@ export default function LoginPage() {
               <div className="p-5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col gap-3 text-amber-500">
                 <div className="flex items-center gap-2">
                   <ShieldAlert className="h-5 w-5 shrink-0" />
-                  <p className="font-bold uppercase tracking-wider text-[10px]">Connection Interrupted</p>
+                  <p className="font-bold uppercase tracking-wider text-[10px]">Configuration Required</p>
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <p className="text-xs leading-relaxed">The app is missing its connection keys. You must add these to your <strong>Vercel Project Settings</strong>:</p>
                   <ul className="grid gap-1 font-mono text-[9px] bg-black/20 p-2 rounded">
                     {configErrors.map((err, i) => <li key={i} className="flex items-center gap-2">• {err}</li>)}
                   </ul>
-                  <p className="text-[10px] italic">Refresh this page after adding the keys in Vercel.</p>
+                  <p className="text-[10px] italic">Refresh the page after adding keys and redeploying in Vercel.</p>
                 </div>
               </div>
             ) : (
               <div className="p-3 bg-accent/5 border border-accent/20 rounded-lg flex items-center gap-3 text-accent text-[10px] uppercase tracking-widest font-bold">
                 <CheckCircle2 className="h-4 w-4 shrink-0" />
-                <span>Node Connection: Online</span>
+                <span>Archive Node: Online</span>
               </div>
             )}
           </div>
@@ -198,27 +201,25 @@ export default function LoginPage() {
 
               <div className="pt-4 border-t border-muted/30">
                 <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest leading-relaxed">
-                  If login fails, ensure your Vercel URL is listed in <strong>Firebase Console &gt; Auth &gt; Settings &gt; Authorized Domains</strong>.
+                  Clearance level required: LIBRARIAN
                 </p>
               </div>
 
-              {connectionStatus !== 'ok' && (
-                <Button 
-                  variant="outline" 
-                  className="w-full text-[10px] uppercase tracking-widest h-10 border-muted"
-                  onClick={() => window.location.reload()}
-                >
-                  <RefreshCcw className="h-3 w-3 mr-2" /> Force Re-sync
-                </Button>
+              {connectionStatus === 'error' && (
+                <div className="mt-4 p-4 bg-accent/5 rounded-lg border border-accent/10 flex gap-3">
+                  <Terminal className="h-4 w-4 text-accent shrink-0" />
+                  <p className="text-[10px] text-muted-foreground leading-relaxed">
+                    Check your .env file or Vercel Environment Variables. The API Key is currently {firebaseConfig.apiKey ? 'Present but possibly wrong' : 'Missing'}.
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>
 
-          <div className="text-center space-y-2">
-            <div className="flex items-center justify-center gap-2 text-[9px] text-muted-foreground uppercase tracking-widest opacity-50">
-              <Terminal className="h-3 w-3" />
-              <span>Educational Archive // Node: {typeof window !== 'undefined' ? window.location.hostname : 'loading...'}</span>
-            </div>
+          <div className="text-center">
+            <p className="text-[9px] text-muted-foreground uppercase tracking-widest opacity-50">
+              System: Educational Experience Archive // Node: {isMounted ? window.location.hostname : 'archive'}
+            </p>
           </div>
         </div>
       </main>

@@ -6,7 +6,7 @@ Follow these steps to unlock the repository and manage your archival broadcast.
 ### 1. Update GitHub & Deploy to Vercel
 Open your terminal (usually at the bottom of your editor) and run these three commands in order:
 1. `git add .`
-2. `git commit -m "Update internal entry and archival bucket"`
+2. `git commit -m "Fix configuration diagnostics and update README"`
 3. `git push origin main`
 *Vercel will automatically see this push and start building your live site.*
 

@@ -17,6 +17,9 @@ export const firebaseConfig = {
 };
 
 // Validation for development debugging
-if (typeof window !== 'undefined' && !firebaseConfig.apiKey) {
-  console.warn("Firebase API Key is missing. Check your environment variables.");
+if (typeof window !== 'undefined') {
+  const isInvalid = !firebaseConfig.apiKey || firebaseConfig.apiKey === 'undefined';
+  if (isInvalid) {
+    console.error("CRITICAL: Firebase API Key is missing or 'undefined'. Check your Vercel Environment Variables.");
+  }
 }
