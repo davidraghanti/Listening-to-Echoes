@@ -5,7 +5,7 @@ import { firebaseConfig } from '@/firebase/config';
 
 /**
  * Generates an RSS 2.0 feed for the Listening to Echoes podcast.
- * Links to audio files in your dedicated Google Cloud Storage bucket.
+ * Links to audio files in your dedicated Google Cloud Storage bucket: 0e61b06faeaf
  */
 export async function GET() {
   const { db } = initializeFirebase();
@@ -18,11 +18,19 @@ export async function GET() {
     orderBy('submittedAt', 'desc')
   );
 
-  const querySnapshot = await getDocs(q);
+  let querySnapshot;
+  try {
+    querySnapshot = await getDocs(q);
+  } catch (e) {
+    console.error("RSS Feed Error:", e);
+    return new Response("Error fetching archive data", { status: 500 });
+  }
+
   const items = querySnapshot.docs.filter(doc => !!doc.data().audioUrl).map(doc => {
     const data = doc.data();
     
-    // Construct the full URL for your bucket
+    // Construct the full URL for your specific bucket: 0e61b06faeaf
+    // If audioUrl is just 'file.mp3', it becomes 'https://storage.googleapis.com/0e61b06faeaf/file.mp3'
     const fullAudioUrl = data.audioUrl.startsWith('http') 
       ? data.audioUrl 
       : `https://storage.googleapis.com/${firebaseConfig.audioBucketId}/${data.audioUrl}`;

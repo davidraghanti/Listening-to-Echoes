@@ -36,9 +36,9 @@ export default function LoginPage() {
         return;
       }
 
-      if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'YOUR_API_KEY') errors.push('API Key');
+      if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('YOUR_API_KEY')) errors.push('API Key');
       if (!firebaseConfig.projectId) errors.push('Project ID');
-      if (!firebaseConfig.appId) errors.push('App ID');
+      if (!firebaseConfig.authDomain) errors.push('Auth Domain');
 
       if (errors.length > 0) {
         setConfigErrors(errors);
@@ -79,6 +79,9 @@ export default function LoginPage() {
     setIsVerifying(true);
     try {
       const provider = new GoogleAuthProvider();
+      // Force account selection to avoid "Request Action Invalid" session bugs
+      provider.setCustomParameters({ prompt: 'select_account' });
+      
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
@@ -112,10 +115,18 @@ export default function LoginPage() {
       
     } catch (error: any) {
       console.error('Login Error:', error);
+      
+      let errorMsg = error.message;
+      if (error.code === 'auth/operation-not-allowed') {
+        errorMsg = "Google Provider is not enabled in Firebase Console.";
+      } else if (error.code === 'auth/unauthorized-domain') {
+        errorMsg = "This domain is not authorized in Firebase Auth settings.";
+      }
+
       toast({
         variant: "destructive",
         title: "Authentication Failed",
-        description: error.message || "Failed to sign in with Google."
+        description: errorMsg || "Failed to sign in with Google."
       });
     } finally {
       setIsVerifying(false);
@@ -140,9 +151,9 @@ export default function LoginPage() {
               <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center gap-3 text-amber-500 text-xs">
                 <ShieldAlert className="h-5 w-5 shrink-0" />
                 <div className="space-y-1">
-                  <p className="font-bold uppercase tracking-wider">Archive Connection Issue</p>
-                  <p>Check Vercel Environment Variables for:</p>
-                  <ul className="list-disc list-inside mt-1 font-mono">
+                  <p className="font-bold uppercase tracking-wider text-[10px]">Config Error</p>
+                  <p>The app is missing these keys in Vercel Settings:</p>
+                  <ul className="list-disc list-inside mt-1 font-mono text-[9px]">
                     {configErrors.map((err, i) => <li key={i}>{err}</li>)}
                   </ul>
                 </div>
@@ -167,10 +178,10 @@ export default function LoginPage() {
                 Internal Entry
               </CardTitle>
               <CardDescription className="pt-2">
-                Sign in with your authorized Google account to access librarian tools.
+                Sign in with your authorized Google account.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <Button 
                 onClick={handleGoogleLogin}
                 disabled={isVerifying || connectionStatus !== 'ok'}
@@ -181,13 +192,17 @@ export default function LoginPage() {
                 ) : (
                   <LogIn className="mr-2 h-5 w-5" />
                 )}
-                {isVerifying ? "Archiving Clearance..." : "Continue with Google"}
+                {isVerifying ? "Verifying..." : "Sign in with Google"}
               </Button>
+
+              <p className="text-[10px] text-center text-muted-foreground uppercase tracking-wider opacity-60 px-4 leading-relaxed">
+                If the popup says "Request Action Invalid," please check that your Firebase Auth Domain matches your Project ID.
+              </p>
 
               {connectionStatus !== 'ok' && connectionStatus !== 'checking' && (
                 <Button 
                   variant="ghost" 
-                  className="w-full text-xs text-muted-foreground mt-4"
+                  className="w-full text-xs text-muted-foreground mt-2"
                   onClick={() => window.location.reload()}
                 >
                   <RefreshCcw className="h-3 w-3 mr-2" /> Attempt Re-sync
@@ -198,7 +213,7 @@ export default function LoginPage() {
           
           <div className="text-center">
             <p className="text-[9px] text-muted-foreground uppercase tracking-widest opacity-50 font-mono">
-              System: Educational Experience Archive // Node: {isMounted ? window.location.hostname : 'archive'}
+              System: Educational Experience Archive // Node: {isMounted ? window.location.hostname : '...'}
             </p>
           </div>
         </div>
