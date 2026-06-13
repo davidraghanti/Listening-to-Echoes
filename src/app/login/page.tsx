@@ -152,7 +152,6 @@ export default function LoginPage() {
     }
   };
 
-  // Prevent hydration errors by not rendering until mounted
   if (!isMounted) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
