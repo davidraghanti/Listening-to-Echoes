@@ -13,7 +13,7 @@ Look at the **very bottom** of this screen. You will see several tabs like "Cons
 Type these three commands into the **Terminal** tab (press Enter after each):
 
 1. `git add .`
-2. `git commit -m "Fixing entry logic and bucket links"`
+2. `git commit -m "Add access code logic for team onboarding"`
 3. `git push origin main`
 
 *Vercel will automatically see this push and start building your live site.*
@@ -50,9 +50,18 @@ If you get "Request Action is Invalid":
 
 ---
 
-### 4. Grant Librarian Role
+### 4. Grant THE FIRST Librarian Role (Bootstrapping)
 1.  Open your live app and click **Internal** to sign in with your Google account.
 2.  Once signed in, go to **Firebase Console** > **Firestore Database**.
-3.  Locate the `users` collection and find your user document.
+3.  Locate the `users` collection and find your user document (matched by your email).
 4.  Change the `role` field from `"user"` to `"librarian"`.
-5.  Refresh the app to see the **Review** tools in the navbar.
+5.  Refresh the app. You will now see the **Review** and **Team** tools in the navbar.
+
+---
+
+### 5. Adding Future Librarians
+Now that you are a Librarian:
+1.  Go to the **Team** page in the navbar.
+2.  Generate a **10-Digit Access Code**.
+3.  Give this code to your colleague. 
+4.  They can enter it on the **Login** page when signing in to automatically receive their role.

@@ -4,16 +4,19 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { LogIn, Loader2, CheckCircle2, ShieldAlert, WifiOff, Terminal, Key } from 'lucide-react';
+import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { LogIn, Loader2, CheckCircle2, ShieldAlert, Key, Info } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { firebaseConfig } from '@/firebase/config';
 
 export default function LoginPage() {
   const [isVerifying, setIsVerifying] = useState(false);
+  const [accessCode, setAccessCode] = useState('');
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'ok' | 'error' | 'offline'>('checking');
   const [configErrors, setConfigErrors] = useState<string[]>([]);
   const [isMounted, setIsMounted] = useState(false);
@@ -35,7 +38,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Diagnostic check for environment variables
       const keys = [
         { name: 'API_KEY', value: firebaseConfig.apiKey },
         { name: 'PROJECT_ID', value: firebaseConfig.projectId },
@@ -71,22 +73,34 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Setup Required",
-        description: "Your Firebase keys (from the SDK snippet) are not in Vercel yet."
+        description: "Your Firebase keys are not in Vercel yet. Check the diagnostic box."
       });
       return;
     }
 
-    if (!auth || !db) {
-      toast({
-        variant: "destructive",
-        title: "Initializing...",
-        description: "Firebase is starting up. Please try again in 3 seconds."
-      });
-      return;
-    }
+    if (!auth || !db) return;
 
     setIsVerifying(true);
     try {
+      // Validate access code if provided
+      let assignedRole: 'user' | 'librarian' | 'author' = 'user';
+      if (accessCode.trim()) {
+        const codeDoc = await getDoc(doc(db, 'access_codes', accessCode.trim()));
+        if (codeDoc.exists()) {
+          assignedRole = codeDoc.data().role || 'user';
+          // Delete the code after use to prevent reuse
+          await deleteDoc(doc(db, 'access_codes', accessCode.trim()));
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Invalid Access Code",
+            description: "The code provided does not exist or has expired."
+          });
+          setIsVerifying(false);
+          return;
+        }
+      }
+
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
       
@@ -99,26 +113,28 @@ export default function LoginPage() {
       if (!userSnap.exists()) {
         await setDoc(userDocRef, {
           email: user.email,
-          role: 'user',
+          role: assignedRole,
           joinedAt: new Date().toISOString()
         });
         
         toast({
-          title: "Entry Successful",
-          description: "Sign-in successful. Check README.md step #4 to unlock Librarian role."
+          title: "Profile Created",
+          description: assignedRole !== 'user' 
+            ? `Welcome to the team! Role: ${assignedRole.toUpperCase()}`
+            : "Sign-in successful. Check README.md to bootstrap Librarian role."
         });
-        router.push('/');
-      } else {
-        const role = userSnap.data()?.role || 'user';
-        toast({
-          title: "Access Granted",
-          description: `Clearance level: ${role.toUpperCase()}`
-        });
-        
-        if (role === 'librarian') router.push('/librarian');
-        else if (role === 'author') router.push('/author');
-        else router.push('/');
+      } else if (assignedRole !== 'user') {
+        // Update existing user if they used a code
+        await setDoc(userDocRef, { role: assignedRole }, { merge: true });
+        toast({ title: "Role Updated", description: `Clearance level changed to ${assignedRole.toUpperCase()}` });
       }
+
+      // Final redirect check
+      const finalSnap = await getDoc(userDocRef);
+      const role = finalSnap.data()?.role || 'user';
+      if (role === 'librarian') router.push('/librarian');
+      else if (role === 'author') router.push('/author');
+      else router.push('/');
       
     } catch (error: any) {
       console.error('Login Error:', error);
@@ -146,18 +162,11 @@ export default function LoginPage() {
                 <ShieldAlert className="h-5 w-5 shrink-0" />
                 <p className="font-bold uppercase tracking-wider text-[10px]">Vercel Setup Needed</p>
               </div>
-              <p className="text-xs leading-relaxed">The "SDK Snippet" values are missing from your <strong>Vercel Project Settings</strong>:</p>
+              <p className="text-xs leading-relaxed">The SDK values are missing from your <strong>Vercel Project Settings</strong>:</p>
               <ul className="grid gap-1 font-mono text-[9px] bg-black/20 p-2 rounded">
                 {configErrors.map((err, i) => <li key={i} className="flex items-center gap-2">• NEXT_PUBLIC_FIREBASE_{err}</li>)}
               </ul>
               <p className="text-[10px] italic">Copy these from your Firebase Console &gt; Project Settings.</p>
-            </div>
-          )}
-
-          {connectionStatus === 'ok' && (
-            <div className="p-3 bg-accent/5 border border-accent/20 rounded-lg flex items-center gap-3 text-accent text-[10px] uppercase tracking-widest font-bold">
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-              <span>Archive Node Connected</span>
             </div>
           )}
 
@@ -171,7 +180,23 @@ export default function LoginPage() {
                 Sign in with Google to access Librarian tools.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="code" className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                  <Key className="h-3 w-3" /> Optional: Internal Access Code
+                </Label>
+                <Input 
+                  id="code"
+                  placeholder="10-digit code"
+                  value={accessCode}
+                  onChange={(e) => setAccessCode(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  className="bg-muted/30 border-muted text-center font-mono tracking-widest"
+                />
+                <p className="text-[9px] text-muted-foreground italic flex items-center gap-1">
+                  <Info className="h-2 w-2" /> Codes are generated by existing Librarians on the Team page.
+                </p>
+              </div>
+
               <Button 
                 onClick={handleGoogleLogin}
                 disabled={isVerifying || connectionStatus !== 'ok'}
@@ -183,7 +208,7 @@ export default function LoginPage() {
 
               <div className="pt-4 border-t border-muted/30">
                 <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest leading-relaxed">
-                  Librarian Clearance Required
+                  Clearance Required for Dashboard
                 </p>
               </div>
             </CardContent>
