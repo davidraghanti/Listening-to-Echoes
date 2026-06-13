@@ -9,7 +9,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { LogIn, Loader2, CheckCircle2, ShieldAlert, WifiOff, Terminal } from 'lucide-react';
+import { LogIn, Loader2, CheckCircle2, ShieldAlert, WifiOff, Terminal, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { firebaseConfig } from '@/firebase/config';
 
@@ -18,7 +18,7 @@ export default function LoginPage() {
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'ok' | 'error' | 'offline'>('checking');
   const [configErrors, setConfigErrors] = useState<string[]>([]);
   const [isMounted, setIsMounted] = useState(false);
-  const [hostname, setHostname] = useState('archive');
+  const [displayHostname, setDisplayHostname] = useState('archive');
   
   const auth = useAuth();
   const db = useFirestore();
@@ -29,7 +29,7 @@ export default function LoginPage() {
   useEffect(() => {
     setIsMounted(true);
     if (typeof window !== 'undefined') {
-      setHostname(window.location.hostname);
+      setDisplayHostname(window.location.hostname);
     }
 
     const checkConnectivity = () => {
@@ -41,15 +41,17 @@ export default function LoginPage() {
       }
 
       // Diagnostic check for environment variables
-      if (!firebaseConfig.apiKey || firebaseConfig.apiKey === 'undefined' || firebaseConfig.apiKey === '') {
-        errors.push('NEXT_PUBLIC_FIREBASE_API_KEY');
-      }
-      if (!firebaseConfig.projectId || firebaseConfig.projectId === 'undefined' || firebaseConfig.projectId === '') {
-        errors.push('NEXT_PUBLIC_FIREBASE_PROJECT_ID');
-      }
-      if (!firebaseConfig.authDomain || firebaseConfig.authDomain === 'undefined' || firebaseConfig.authDomain === '') {
-        errors.push('NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN');
-      }
+      const keys = [
+        { name: 'NEXT_PUBLIC_FIREBASE_API_KEY', value: firebaseConfig.apiKey },
+        { name: 'NEXT_PUBLIC_FIREBASE_PROJECT_ID', value: firebaseConfig.projectId },
+        { name: 'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN', value: firebaseConfig.authDomain }
+      ];
+
+      keys.forEach(k => {
+        if (!k.value || k.value === 'undefined' || k.value === '') {
+          errors.push(k.name);
+        }
+      });
 
       if (errors.length > 0) {
         setConfigErrors(errors);
@@ -86,7 +88,14 @@ export default function LoginPage() {
       return;
     }
 
-    if (!auth || !db) return;
+    if (!auth || !db) {
+      toast({
+        variant: "destructive",
+        title: "System Not Ready",
+        description: "Firebase is still initializing. Please refresh in a moment."
+      });
+      return;
+    }
 
     setIsVerifying(true);
     try {
@@ -143,7 +152,17 @@ export default function LoginPage() {
     }
   };
 
-  if (!isMounted) return null;
+  // Prevent hydration errors by not rendering until mounted
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center p-4">
+          <Loader2 className="h-10 w-10 animate-spin text-accent" />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -210,20 +229,24 @@ export default function LoginPage() {
               </div>
 
               {connectionStatus === 'error' && (
-                <div className="mt-4 p-4 bg-accent/5 rounded-lg border border-accent/10 flex gap-3">
-                  <Terminal className="h-4 w-4 text-accent shrink-0" />
-                  <p className="text-[10px] text-muted-foreground leading-relaxed">
-                    Terminal commands for GitHub update are in the README. 
-                    The API Key is currently {firebaseConfig.apiKey && firebaseConfig.apiKey !== 'undefined' ? 'Configured' : 'Missing'}.
-                  </p>
+                <div className="mt-4 p-4 bg-accent/5 rounded-lg border border-accent/10 flex flex-col gap-3">
+                  <div className="flex gap-3">
+                    <Terminal className="h-4 w-4 text-accent shrink-0" />
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      Terminal commands for GitHub update are in the README. 
+                    </p>
+                  </div>
+                  <div className="p-2 bg-black/20 rounded font-mono text-[9px] text-amber-200">
+                    Error: auth/api-key-not-valid
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <div className="text-center">
+          <div className="text-center space-y-2">
             <p className="text-[9px] text-muted-foreground uppercase tracking-widest opacity-50">
-              System: Educational Experience Archive // Node: {hostname}
+              System: Educational Experience Archive // Node: {displayHostname}
             </p>
           </div>
         </div>
