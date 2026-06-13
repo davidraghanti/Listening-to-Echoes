@@ -4,21 +4,23 @@
 Follow these steps to unlock the repository and manage your archival broadcast.
 
 ### 📍 Where is the Terminal?
-Look at the **very bottom** of this screen. You will see a small tab labeled **"Terminal"** (it's usually right next to "Console" or "Output"). 
+Look at the **very bottom** of this screen. You will see several tabs. 
+*   **DO NOT** use the tab labeled **"Console"**. That is for code errors.
+*   **USE** the tab labeled **"Terminal"**. 
 
-**DO NOT** type these into the "Console" tab or the browser.
+If you see a `>` prompt, you are likely in the wrong place. If you see a path like `/home/project`, you are in the correct place.
 
 ### 1. Update GitHub & Deploy
-Once you find the **Terminal**, type these three commands in order (press Enter after each):
+Type these three commands into the **Terminal** (press Enter after each):
 
 1. `git add .`
-2. `git commit -m "Fixing connection and entry logic"`
+2. `git commit -m "Fixing entry logic and bucket links"`
 3. `git push origin main`
 
 *Vercel will automatically see this push and start building your live site.*
 
 ### 2. Connect to Vercel (CRITICAL)
-The app will say "Offline" or "API Key Invalid" unless these keys are in your **Vercel Project Settings** > **Environment Variables**:
+The app will say "Offline" or "API Key Invalid" until these keys are in your **Vercel Project Settings** > **Environment Variables**:
 
 *   `NEXT_PUBLIC_FIREBASE_API_KEY`
 *   `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
@@ -31,7 +33,7 @@ The app will say "Offline" or "API Key Invalid" unless these keys are in your **
 *Note: After adding these in Vercel, you must go to the **Deployments** tab and click **Redeploy** on your latest build.*
 
 ### 3. Enable Google Auth
-If you get "Request Action is Invalid" or "Operation Not Allowed":
+If you get "Request Action is Invalid":
 1. Go to **Firebase Console** > **Authentication**.
 2. Click **Sign-in method** > **Add new provider**.
 3. Select **Google**, enable it, and save.
