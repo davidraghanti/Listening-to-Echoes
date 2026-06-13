@@ -150,7 +150,7 @@ export default function LoginPage() {
               <ul className="grid gap-1 font-mono text-[9px] bg-black/20 p-2 rounded">
                 {configErrors.map((err, i) => <li key={i} className="flex items-center gap-2">• NEXT_PUBLIC_FIREBASE_{err}</li>)}
               </ul>
-              <p className="text-[10px] italic">Copy these from your Firebase Console > Project Settings.</p>
+              <p className="text-[10px] italic">Copy these from your Firebase Console &gt; Project Settings.</p>
             </div>
           )}
 
