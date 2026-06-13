@@ -12,11 +12,11 @@ export const firebaseConfig = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  // The key Id for your sound bucket used for the podcast/RSS feed
+  // Your dedicated sound bucket ID
   audioBucketId: process.env.NEXT_PUBLIC_AUDIO_BUCKET_ID || "0e61b06faeaf" 
 };
 
 // Validation for development debugging
 if (typeof window !== 'undefined' && !firebaseConfig.apiKey) {
-  console.warn("Firebase API Key is missing. Check your .env file or Vercel environment variables.");
+  console.warn("Firebase API Key is missing. Check your environment variables.");
 }

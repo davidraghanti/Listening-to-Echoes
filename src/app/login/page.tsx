@@ -87,16 +87,15 @@ export default function LoginPage() {
       const userSnap = await getDoc(userDocRef);
 
       if (!userSnap.exists()) {
-        // Create a default user profile if none exists
         await setDoc(userDocRef, {
           email: user.email,
-          role: 'user', // Default role. Librarian roles must be assigned manually in Console for first user.
+          role: 'user', // Default role. Librarian roles must be assigned manually in Console.
           joinedAt: new Date().toISOString()
         });
         
         toast({
           title: "Session Established",
-          description: "Authenticated successfully. Note: Staff access requires librarian approval."
+          description: "Sign-in successful. Note: Staff access requires manual approval in the database."
         });
         router.push('/');
       } else {

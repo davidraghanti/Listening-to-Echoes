@@ -5,6 +5,7 @@ import { firebaseConfig } from '@/firebase/config';
 
 /**
  * Generates an RSS 2.0 feed for the Listening to Echoes podcast.
+ * Links to audio files in your dedicated Google Cloud Storage bucket.
  */
 export async function GET() {
   const { db } = initializeFirebase();
@@ -18,23 +19,24 @@ export async function GET() {
   );
 
   const querySnapshot = await getDocs(q);
-  const items = querySnapshot.docs.map(doc => {
+  const items = querySnapshot.docs.filter(doc => !!doc.data().audioUrl).map(doc => {
     const data = doc.data();
-    // If the audioUrl is just a filename, prepend the storage URL using the audioBucketId
-    const fullAudioUrl = data.audioUrl?.startsWith('http') 
+    
+    // Construct the full URL for your bucket
+    const fullAudioUrl = data.audioUrl.startsWith('http') 
       ? data.audioUrl 
       : `https://storage.googleapis.com/${firebaseConfig.audioBucketId}/${data.audioUrl}`;
 
     return `
       <item>
-        <title><![CDATA[${data.title}\u005D\u005D\u003E</title>
-        <description><![CDATA[${data.content}\u005D\u005D\u003E</description>
+        <title><![CDATA[${data.title}]]></title>
+        <description><![CDATA[${data.content}]]></description>
         <pubDate>${new Date(data.submittedAt).toUTCString()}</pubDate>
         <link>https://listening-to-echoes.web.app/archive</link>
         <guid isPermaLink="false">${doc.id}</guid>
         <enclosure url="${fullAudioUrl}" length="0" type="audio/mpeg" />
         <itunes:author>Listening to Echoes</itunes:author>
-        <itunes:summary><![CDATA[${data.content}\u005D\u005D\u003E</itunes:summary>
+        <itunes:summary><![CDATA[${data.content}]]></itunes:summary>
       </item>
     `;
   }).join('');
