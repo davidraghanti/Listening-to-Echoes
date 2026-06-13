@@ -58,7 +58,6 @@ export default function LoginPage() {
     };
   }, []);
 
-  // Redirect if already logged in and has a role
   useEffect(() => {
     if (user && profile) {
       if (profile.role === 'librarian') router.push('/librarian');
@@ -79,26 +78,24 @@ export default function LoginPage() {
     setIsVerifying(true);
     try {
       const provider = new GoogleAuthProvider();
-      // Force account selection to avoid "Request Action Invalid" session bugs
       provider.setCustomParameters({ prompt: 'select_account' });
       
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Check for existing profile
       const userDocRef = doc(db, 'users', user.uid);
       const userSnap = await getDoc(userDocRef);
 
       if (!userSnap.exists()) {
         await setDoc(userDocRef, {
           email: user.email,
-          role: 'user', // Default role. Librarian roles must be assigned manually in Console.
+          role: 'user',
           joinedAt: new Date().toISOString()
         });
         
         toast({
           title: "Session Established",
-          description: "Sign-in successful. Note: Staff access requires manual approval in the database."
+          description: "Sign-in successful. Librarian access requires manual approval in the database."
         });
         router.push('/');
       } else {
@@ -196,7 +193,7 @@ export default function LoginPage() {
               </Button>
 
               <p className="text-[10px] text-center text-muted-foreground uppercase tracking-wider opacity-60 px-4 leading-relaxed">
-                If the popup says "Request Action Invalid," please check that your Firebase Auth Domain matches your Project ID.
+                If the popup says "Request Action Invalid," please check that your Authorized Domains in Firebase Console match your Vercel URL.
               </p>
 
               {connectionStatus !== 'ok' && connectionStatus !== 'checking' && (
@@ -210,12 +207,6 @@ export default function LoginPage() {
               )}
             </CardContent>
           </Card>
-          
-          <div className="text-center">
-            <p className="text-[9px] text-muted-foreground uppercase tracking-widest opacity-50 font-mono">
-              System: Educational Experience Archive // Node: {isMounted ? window.location.hostname : '...'}
-            </p>
-          </div>
         </div>
       </main>
     </div>

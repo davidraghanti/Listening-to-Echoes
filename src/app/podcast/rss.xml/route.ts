@@ -30,7 +30,6 @@ export async function GET() {
     const data = doc.data();
     
     // Construct the full URL for your specific bucket: 0e61b06faeaf
-    // If audioUrl is just 'file.mp3', it becomes 'https://storage.googleapis.com/0e61b06faeaf/file.mp3'
     const fullAudioUrl = data.audioUrl.startsWith('http') 
       ? data.audioUrl 
       : `https://storage.googleapis.com/${firebaseConfig.audioBucketId}/${data.audioUrl}`;
