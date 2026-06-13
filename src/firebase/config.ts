@@ -1,4 +1,3 @@
-
 /**
  * Firebase Configuration
  * 
@@ -20,6 +19,6 @@ export const firebaseConfig = {
 if (typeof window !== 'undefined') {
   const isInvalid = !firebaseConfig.apiKey || firebaseConfig.apiKey === 'undefined';
   if (isInvalid) {
-    console.error("CRITICAL: Firebase API Key is missing or 'undefined'. Check your Vercel Environment Variables.");
+    console.error("CRITICAL: Firebase API Key is missing. See README.md to connect your SDK snippet values.");
   }
 }

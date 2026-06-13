@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,7 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { useAuth, useFirestore, useUser } from '@/firebase';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { LogIn, Loader2, CheckCircle2, ShieldAlert, WifiOff, Terminal, AlertTriangle } from 'lucide-react';
+import { LogIn, Loader2, CheckCircle2, ShieldAlert, WifiOff, Terminal, Key } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { firebaseConfig } from '@/firebase/config';
 
@@ -58,13 +57,6 @@ export default function LoginPage() {
     };
 
     checkConnectivity();
-    window.addEventListener('online', checkConnectivity);
-    window.addEventListener('offline', checkConnectivity);
-    
-    return () => {
-      window.removeEventListener('online', checkConnectivity);
-      window.removeEventListener('offline', checkConnectivity);
-    };
   }, []);
 
   useEffect(() => {
@@ -79,7 +71,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Setup Required",
-        description: "Your Firebase keys are not connected to Vercel yet."
+        description: "Your Firebase keys (from the SDK snippet) are not in Vercel yet."
       });
       return;
     }
@@ -87,8 +79,8 @@ export default function LoginPage() {
     if (!auth || !db) {
       toast({
         variant: "destructive",
-        title: "System Not Ready",
-        description: "Firebase is still initializing. Please wait 5 seconds and try again."
+        title: "Initializing...",
+        description: "Firebase is starting up. Please try again in 3 seconds."
       });
       return;
     }
@@ -130,34 +122,17 @@ export default function LoginPage() {
       
     } catch (error: any) {
       console.error('Login Error:', error);
-      
-      let errorMsg = error.message;
-      if (error.code === 'auth/api-key-not-valid' || error.code === 'auth/invalid-api-key') {
-        errorMsg = "The API Key in your Vercel Environment Variables is invalid.";
-      } else if (error.code === 'auth/operation-not-allowed') {
-        errorMsg = "Google login is not enabled in your Firebase Console (Authentication tab).";
-      }
-
       toast({
         variant: "destructive",
         title: "Authentication Failed",
-        description: errorMsg
+        description: error.message
       });
     } finally {
       setIsVerifying(false);
     }
   };
 
-  if (!isMounted) {
-    return (
-      <div className="min-h-screen flex flex-col bg-background">
-        <Navbar />
-        <main className="flex-1 flex items-center justify-center p-4">
-          <Loader2 className="h-10 w-10 animate-spin text-accent" />
-        </main>
-      </div>
-    );
-  }
+  if (!isMounted) return null;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -165,55 +140,44 @@ export default function LoginPage() {
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="max-w-md w-full space-y-6">
           
-          <div className="space-y-4">
-            {connectionStatus === 'offline' ? (
-              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg flex items-center gap-3 text-destructive text-xs">
-                <WifiOff className="h-5 w-5 shrink-0" />
-                <p>Internet Unreachable. Check your connection.</p>
+          {connectionStatus === 'error' && (
+            <div className="p-5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col gap-3 text-amber-500 animate-in fade-in slide-in-from-top-4">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="h-5 w-5 shrink-0" />
+                <p className="font-bold uppercase tracking-wider text-[10px]">Vercel Setup Needed</p>
               </div>
-            ) : connectionStatus === 'error' ? (
-              <div className="p-5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex flex-col gap-3 text-amber-500">
-                <div className="flex items-center gap-2">
-                  <ShieldAlert className="h-5 w-5 shrink-0" />
-                  <p className="font-bold uppercase tracking-wider text-[10px]">Vercel Setup Needed</p>
-                </div>
-                <div className="space-y-3">
-                  <p className="text-xs leading-relaxed">The following keys are missing from your <strong>Vercel Project Settings</strong>:</p>
-                  <ul className="grid gap-1 font-mono text-[9px] bg-black/20 p-2 rounded">
-                    {configErrors.map((err, i) => <li key={i} className="flex items-center gap-2">• NEXT_PUBLIC_FIREBASE_{err}</li>)}
-                  </ul>
-                  <p className="text-[10px] italic">After adding them, you must <strong>Redeploy</strong> in Vercel.</p>
-                </div>
-              </div>
-            ) : (
-              <div className="p-3 bg-accent/5 border border-accent/20 rounded-lg flex items-center gap-3 text-accent text-[10px] uppercase tracking-widest font-bold">
-                <CheckCircle2 className="h-4 w-4 shrink-0" />
-                <span>Archive Node: Online</span>
-              </div>
-            )}
-          </div>
+              <p className="text-xs leading-relaxed">The "SDK Snippet" values are missing from your <strong>Vercel Project Settings</strong>:</p>
+              <ul className="grid gap-1 font-mono text-[9px] bg-black/20 p-2 rounded">
+                {configErrors.map((err, i) => <li key={i} className="flex items-center gap-2">• NEXT_PUBLIC_FIREBASE_{err}</li>)}
+              </ul>
+              <p className="text-[10px] italic">Copy these from your Firebase Console > Project Settings.</p>
+            </div>
+          )}
 
-          <Card className="w-full border-muted bg-card/50 backdrop-blur-sm shadow-2xl">
+          {connectionStatus === 'ok' && (
+            <div className="p-3 bg-accent/5 border border-accent/20 rounded-lg flex items-center gap-3 text-accent text-[10px] uppercase tracking-widest font-bold">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <span>Archive Node Connected</span>
+            </div>
+          )}
+
+          <Card className="w-full border-muted bg-card/50 backdrop-blur-sm">
             <CardHeader className="text-center">
               <CardTitle className="text-3xl font-headline flex items-center justify-center gap-2">
                 <LogIn className="h-6 w-6 text-accent" />
                 Internal Entry
               </CardTitle>
               <CardDescription className="pt-2">
-                Sign in with Google to access review tools.
+                Sign in with Google to access Librarian tools.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <Button 
                 onClick={handleGoogleLogin}
                 disabled={isVerifying || connectionStatus !== 'ok'}
-                className="w-full h-14 bg-accent text-background hover:bg-accent/90 rounded-full font-bold text-lg transition-all"
+                className="w-full h-14 bg-accent text-background hover:bg-accent/90 rounded-full font-bold text-lg"
               >
-                {isVerifying ? (
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                ) : (
-                  <LogIn className="mr-2 h-5 w-5" />
-                )}
+                {isVerifying ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <LogIn className="mr-2 h-5 w-5" />}
                 {isVerifying ? "Verifying..." : "Sign in with Google"}
               </Button>
 
@@ -222,25 +186,8 @@ export default function LoginPage() {
                   Librarian Clearance Required
                 </p>
               </div>
-
-              {connectionStatus === 'error' && (
-                <div className="mt-4 p-4 bg-accent/5 rounded-lg border border-accent/10 flex flex-col gap-3">
-                  <div className="flex gap-3">
-                    <Terminal className="h-4 w-4 text-accent shrink-0" />
-                    <p className="text-[10px] text-muted-foreground leading-relaxed">
-                      Terminal instructions are in the README. 
-                    </p>
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
-
-          <div className="text-center space-y-2">
-            <p className="text-[9px] text-muted-foreground uppercase tracking-widest opacity-50">
-              System: Educational Experience Archive
-            </p>
-          </div>
         </div>
       </main>
     </div>

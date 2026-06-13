@@ -1,17 +1,16 @@
-
 # 🔑 Internal Entry & Librarian Setup Guide
 
-Follow these steps to unlock the repository and manage your archival broadcast.
+Follow these steps to connect your "Archival Brain" (Firebase) to your "Archival Body" (Vercel).
 
 ### 📍 Where is the Terminal?
-Look at the **very bottom** of this screen. You will see several tabs. 
-*   **DO NOT** use the tab labeled **"Console"**. That is for code errors.
+Look at the **very bottom** of this screen. You will see several tabs like "Console", "Terminal", and "Output".
+*   **DO NOT** use the tab labeled **"Console"**. That is for JavaScript code.
 *   **USE** the tab labeled **"Terminal"**. 
 
-If you see a `>` prompt, you are likely in the wrong place. If you see a path like `/home/project`, you are in the correct place.
+---
 
 ### 1. Update GitHub & Deploy
-Type these three commands into the **Terminal** (press Enter after each):
+Type these three commands into the **Terminal** tab (press Enter after each):
 
 1. `git add .`
 2. `git commit -m "Fixing entry logic and bucket links"`
@@ -19,31 +18,41 @@ Type these three commands into the **Terminal** (press Enter after each):
 
 *Vercel will automatically see this push and start building your live site.*
 
-### 2. Connect to Vercel (CRITICAL)
-The app will say "Offline" or "API Key Invalid" until these keys are in your **Vercel Project Settings** > **Environment Variables**:
+---
 
-*   `NEXT_PUBLIC_FIREBASE_API_KEY`
-*   `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-*   `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-*   `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-*   `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-*   `NEXT_PUBLIC_FIREBASE_APP_ID`
+### 2. Connect the "SDK Snippet" (CRITICAL)
+Your app will stay "Offline" or show "Invalid API Key" until you add your Firebase keys to Vercel.
+
+1.  Go to **Firebase Console** > **Project Settings** (gear icon).
+2.  Scroll down to **"SDK setup and configuration"**.
+3.  Select **"Config"** to see your SDK Snippet.
+4.  Open **Vercel** > **Project Settings** > **Environment Variables**.
+5.  Add these keys using the values from your snippet:
+
+*   `NEXT_PUBLIC_FIREBASE_API_KEY`: (Copy the `apiKey` value)
+*   `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`: (Copy the `authDomain` value)
+*   `NEXT_PUBLIC_FIREBASE_PROJECT_ID`: (Copy the `projectId` value)
+*   `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`: (Copy the `storageBucket` value)
+*   `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`: (Copy the `messagingSenderId` value)
+*   `NEXT_PUBLIC_FIREBASE_APP_ID`: (Copy the `appId` value)
 *   `NEXT_PUBLIC_AUDIO_BUCKET_ID`: `0e61b06faeaf`
 
-*Note: After adding these in Vercel, you must go to the **Deployments** tab and click **Redeploy** on your latest build.*
+**IMPORTANT**: After adding these in Vercel, you must go to the **Deployments** tab in Vercel and click **Redeploy** on your latest build for the changes to take effect.
+
+---
 
 ### 3. Enable Google Auth
 If you get "Request Action is Invalid":
-1. Go to **Firebase Console** > **Authentication**.
-2. Click **Sign-in method** > **Add new provider**.
-3. Select **Google**, enable it, and save.
-4. **IMPORTANT**: Click the **Settings** tab (next to Sign-in method).
-5. Click **Authorized Domains**.
-6. Ensure your Vercel URL (e.g., `yourapp.vercel.app`) is listed.
+1.  Go to **Firebase Console** > **Authentication**.
+2.  Click **Sign-in method** > **Add new provider**.
+3.  Select **Google**, enable it, and save.
+4.  **Authorized Domains**: In the **Settings** tab (next to Sign-in method), ensure your Vercel URL (e.g., `yourapp.vercel.app`) is listed.
+
+---
 
 ### 4. Grant Librarian Role
-1. Open your app and click **Internal** to sign in with your Google account.
-2. Once signed in, go to **Firebase Console** > **Firestore Database**.
-3. Locate the `users` collection and find your user document.
-4. Change the `role` field from `"user"` to `"librarian"`.
-5. Refresh the app to see the **Review** tools in the navbar.
+1.  Open your live app and click **Internal** to sign in with your Google account.
+2.  Once signed in, go to **Firebase Console** > **Firestore Database**.
+3.  Locate the `users` collection and find your user document.
+4.  Change the `role` field from `"user"` to `"librarian"`.
+5.  Refresh the app to see the **Review** tools in the navbar.
